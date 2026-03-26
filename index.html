@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Jett">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Jett</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@100;300;400;600&display=swap" rel="stylesheet">
 <style>
@@ -119,7 +122,7 @@ header {
   background:var(--panel);
   border:1px solid var(--border2);
   border-radius:3px;
-  overflow:visible;
+  overflow:visible !important;
 }
 .card-header {
   padding:9px 13px;
@@ -128,7 +131,7 @@ header {
   border-bottom:1px solid var(--border2);
   display:flex; justify-content:space-between; align-items:center;
 }
-.card-body { padding:12px 13px; }
+.card-body { padding:12px 13px; overflow:visible !important; }
 .card-accent-blue .card-header { color:var(--accent); }
 .card-accent-green .card-header { color:var(--accent2); }
 .card-accent-orange .card-header { color:var(--accent3); }
