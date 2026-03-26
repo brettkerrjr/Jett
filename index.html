@@ -903,6 +903,11 @@ select.finput { appearance:none; cursor:pointer; }
         <div class="card-body" id="commodities-body"><div class="loading-msg">—</div></div>
       </div>
 
+      <div class="card card-accent-orange" id="energy-intel-card" style="display:none">
+        <div class="card-header">⚡ Energy Intel — NG Markets</div>
+        <div class="card-body" id="energy-intel-body"><div class="loading-msg">—</div></div>
+      </div>
+
       <div class="card card-accent-orange">
         <div class="card-header">◎ On The Radar</div>
         <div class="card-body" id="radar-body"><div class="loading-msg">—</div></div>
@@ -930,6 +935,19 @@ select.finput { appearance:none; cursor:pointer; }
           </div>
           <div class="hint">Get yours at <span style="color:var(--accent)">console.anthropic.com</span> → API Keys. Stored locally only.</div>
           <button class="btn btn-green" onclick="saveKey()">▶ SAVE KEY</button>
+        </div>
+      </div>
+
+      <div class="card card-accent-orange">
+        <div class="card-header">◈ EIA Market Data Key</div>
+        <div class="card-body">
+          <div class="field">
+            <label class="flabel">EIA API Key</label>
+            <input type="password" class="finput" id="eia-key" placeholder="EIA API key..."/>
+            <div class="api-status" id="eia-key-status"><div class="dot"></div><span id="eia-key-status-txt">No key entered</span></div>
+          </div>
+          <div class="hint">Free key at <span style="color:var(--accent)">eia.gov/opendata</span>. Unlocks live Henry Hub price and weekly natural gas storage data.</div>
+          <button class="btn btn-orange" onclick="saveEiaKey()">▶ SAVE EIA KEY</button>
         </div>
       </div>
 
@@ -1304,6 +1322,8 @@ window.onload = () => {
   if (dc.interval) document.getElementById('dutch-interval').value = dc.interval;
   const key = localStorage.getItem('jett_key');
   if (key) { document.getElementById('api-key').value = key; setKeyStatus(true); }
+  const eiaKey = localStorage.getItem('jett_eia_key');
+  if (eiaKey) { document.getElementById('eia-key').value = eiaKey; setEiaKeyStatus(true); }
   // Init battery + token budget
   updateBattery();
   const tu = getTokenUsage();
@@ -1384,6 +1404,20 @@ function setKeyStatus(ok) {
   const el = document.getElementById('key-status');
   el.className = 'api-status ' + (ok?'ok':'err');
   document.getElementById('key-status-txt').textContent = ok ? 'Key looks valid' : 'Invalid format';
+}
+
+function saveEiaKey() {
+  const k = document.getElementById('eia-key').value.trim();
+  if (!k) { showToast('Enter EIA key first'); return; }
+  localStorage.setItem('jett_eia_key', k);
+  setEiaKeyStatus(true);
+  showToast('EIA key saved');
+}
+function setEiaKeyStatus(ok) {
+  const el = document.getElementById('eia-key-status');
+  if (!el) return;
+  el.className = 'api-status ' + (ok ? 'ok' : 'err');
+  document.getElementById('eia-key-status-txt').textContent = ok ? 'Key saved' : 'No key entered';
 }
 
 function saveSettings() {
@@ -2140,7 +2174,28 @@ function speakChunked(text) {
 // BRIEFING
 // =============================================================
 async function loadBriefing() {
-  loadWeather(); loadCommodities(); renderRadar(); loadAIBriefing();
+  renderRadar();
+  const [weatherData, commodityData, energyData] = await Promise.allSettled([
+    loadWeather(),
+    loadCommodities(),
+    loadEnergyIntel()
+  ]);
+  // Build market context from real data, pass to AI briefing
+  const mkt = buildMarketContext(commodityData, energyData);
+  loadAIBriefing(mkt);
+}
+
+function buildMarketContext(commodityResult, energyResult) {
+  const lines = [];
+  if (commodityResult.status === 'fulfilled' && commodityResult.value) {
+    lines.push('Live market prices:');
+    lines.push(...commodityResult.value);
+  }
+  if (energyResult.status === 'fulfilled' && energyResult.value) {
+    lines.push('EIA natural gas data:');
+    lines.push(...energyResult.value);
+  }
+  return lines.length ? lines.join('\n') : null;
 }
 
 async function loadWeather() {
@@ -2170,32 +2225,122 @@ function wDesc(c) {
   if(c<=82)return'Rain showers'; if(c<=99)return'Thunderstorm'; return'—';
 }
 
+async function fetchYahooQuote(symbol) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2d`;
+  const proxies = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    `https://corsproxy.io/?${encodeURIComponent(url)}`
+  ];
+  for (const proxy of proxies) {
+    try {
+      const r = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const m = d?.chart?.result?.[0]?.meta;
+      if (!m || !m.regularMarketPrice) continue;
+      const price = m.regularMarketPrice;
+      const prev = m.previousClose || m.chartPreviousClose || price;
+      const chg = ((price - prev) / prev * 100).toFixed(2);
+      return { price: price.toFixed(2), chg, up: parseFloat(chg) >= 0 };
+    } catch(e) { continue; }
+  }
+  return null;
+}
+
 async function loadCommodities() {
   const el = document.getElementById('commodities-body');
   el.innerHTML = '<div class="loading-msg">Loading markets...</div>';
   const pairs = [
-    {s:'NG=F',n:'Natural Gas'},
-    {s:'CL=F',n:'Crude Oil WTI'},
-    {s:'BZ=F',n:'Brent Crude'},
-    {s:'GC=F',n:'Gold'},
-    {s:'SI=F',n:'Silver'},
+    { s:'NG=F',  n:'Natural Gas',    unit:'$/MMBtu' },
+    { s:'CL=F',  n:'Crude Oil WTI',  unit:'$/bbl'   },
+    { s:'BZ=F',  n:'Brent Crude',    unit:'$/bbl'   },
+    { s:'GC=F',  n:'Gold',           unit:'$/oz'    },
+    { s:'SI=F',  n:'Silver',         unit:'$/oz'    },
   ];
+
+  const results = await Promise.allSettled(pairs.map(p => fetchYahooQuote(p.s)));
+  const contextLines = [];
+
+  el.innerHTML = results.map((r, i) => {
+    if (r.status === 'fulfilled' && r.value) {
+      const d = r.value;
+      contextLines.push(`${pairs[i].n}: $${d.price} ${pairs[i].unit} (${d.up ? '+' : ''}${d.chg}%)`);
+      return `<div class="commodity-row"><span style="color:var(--text-dim)">${pairs[i].n}</span><span>$${d.price}</span><span class="${d.up?'up':'dn'}">${d.up?'▲':'▼'} ${Math.abs(d.chg)}%</span></div>`;
+    }
+    return `<div class="commodity-row"><span style="color:var(--text-dim)">${pairs[i].n}</span><span style="color:var(--text-muted)">—</span><span style="color:var(--text-muted)">unavailable</span></div>`;
+  }).join('');
+
+  return contextLines.length ? contextLines : null;
+}
+
+async function loadEnergyIntel() {
+  const eiaKey = localStorage.getItem('jett_eia_key');
+  const card = document.getElementById('energy-intel-card');
+  const el = document.getElementById('energy-intel-body');
+
+  if (!eiaKey) {
+    card.style.display = 'none';
+    return null;
+  }
+
+  card.style.display = 'block';
+  el.innerHTML = '<div class="loading-msg">Fetching EIA data...</div>';
+
+  const contextLines = [];
+
   try {
-    const results = await Promise.allSettled(pairs.map(async p => {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${p.s}?interval=1d&range=2d`;
-      const r = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
-      const d = await r.json();
-      const m = d.chart.result[0].meta;
-      const price = m.regularMarketPrice;
-      const prev = m.previousClose || m.chartPreviousClose;
-      const chg = ((price-prev)/prev*100).toFixed(2);
-      return {name:p.n, price:price.toFixed(2), chg, up:parseFloat(chg)>=0};
-    }));
-    el.innerHTML = results.map((r,i)=>{
-      if(r.status==='fulfilled'){const d=r.value;return`<div class="commodity-row"><span style="color:var(--text-dim)">${d.name}</span><span>$${d.price}</span><span class="${d.up?'up':'dn'}">${d.up?'▲':'▼'} ${Math.abs(d.chg)}%</span></div>`;}
-      return`<div class="commodity-row"><span style="color:var(--text-dim)">${pairs[i].n}</span><span style="color:var(--text-muted)">—</span></div>`;
-    }).join('');
-  } catch(e) { el.innerHTML = '<div class="loading-msg">Market data unavailable</div>'; }
+    // Henry Hub daily spot price (RNGWHHD)
+    const hhRes = await fetch(
+      `https://api.eia.gov/v2/natural-gas/pri/sum/dcu/nus/monthly/data/?api_key=${eiaKey}&frequency=monthly&data[0]=value&facets[duoarea][]=NUS&facets[product][]=EPG0&sort[0][column]=period&sort[0][direction]=desc&length=2`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+    if (hhRes.ok) {
+      const hhData = await hhRes.json();
+      const recs = hhData?.response?.data;
+      if (recs && recs.length >= 1) {
+        const latest = recs[0];
+        const prev = recs[1];
+        const price = parseFloat(latest.value).toFixed(2);
+        const prevPrice = prev ? parseFloat(prev.value).toFixed(2) : null;
+        const chg = prevPrice ? (((parseFloat(price) - parseFloat(prevPrice)) / parseFloat(prevPrice)) * 100).toFixed(1) : null;
+        const chgStr = chg ? ` (${parseFloat(chg)>=0?'+':''}${chg}% vs prior month)` : '';
+        contextLines.push(`Henry Hub avg: $${price}/MMBtu${chgStr}`);
+        el.innerHTML = `<div class="commodity-row"><span style="color:var(--text-dim)">Henry Hub</span><span>$${price}/MMBtu</span><span class="${chg&&parseFloat(chg)>=0?'up':'dn'}">${chg?(parseFloat(chg)>=0?'▲':'▼')+' '+Math.abs(chg)+'%':''}</span></div>`;
+      }
+    }
+  } catch(e) {}
+
+  try {
+    // Weekly working gas storage (lower 48)
+    const storRes = await fetch(
+      `https://api.eia.gov/v2/natural-gas/stor/wkly/data/?api_key=${eiaKey}&frequency=weekly&data[0]=value&facets[duoarea][]=NUS&facets[process][]=VGS&sort[0][column]=period&sort[0][direction]=desc&length=6`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+    if (storRes.ok) {
+      const storData = await storRes.json();
+      const recs = storData?.response?.data;
+      if (recs && recs.length >= 2) {
+        const latest = recs[0];
+        const prior = recs[1];
+        const bcf = Math.round(parseFloat(latest.value));
+        const priorBcf = Math.round(parseFloat(prior.value));
+        const injWd = bcf - priorBcf;
+        const sign = injWd >= 0 ? '+' : '';
+        const label = injWd >= 0 ? 'injection' : 'withdrawal';
+        contextLines.push(`Working gas storage: ${bcf.toLocaleString()} Bcf (${sign}${injWd} Bcf week-over-week ${label})`);
+        const storEl = document.getElementById('energy-intel-body');
+        storEl.innerHTML += `<div class="commodity-row"><span style="color:var(--text-dim)">Storage (L48)</span><span>${bcf.toLocaleString()} Bcf</span><span class="${injWd>=0?'up':'dn'}">${sign}${injWd} Bcf</span></div>`;
+        storEl.innerHTML += `<div style="font-size:10px;color:var(--text-dim);padding:4px 0 2px">${latest.period} · week-over-week ${label}</div>`;
+      }
+    }
+  } catch(e) {}
+
+  if (!contextLines.length) {
+    el.innerHTML = '<div class="loading-msg">EIA data unavailable — check key or try later</div>';
+    return null;
+  }
+
+  return contextLines;
 }
 
 function renderRadar() {
@@ -2211,24 +2356,32 @@ function renderRadar() {
   el.innerHTML = html;
 }
 
-async function loadAIBriefing() {
+async function loadAIBriefing(marketContext) {
   const el = document.getElementById('news-body');
   const key = localStorage.getItem('jett_key');
   if (!key) { el.innerHTML='<div class="loading-msg">Add API key in Config to enable AI briefing</div>'; return; }
   el.innerHTML = '<div class="loading-msg">Generating...</div>';
+
+  const dataBlock = marketContext
+    ? `\n\nLive data pulled moments ago:\n${marketContext}\n\nUse these actual numbers in your briefing — ground your commentary in them.`
+    : '';
+
+  const prompt = `You are Jett. Give Brett a concise market briefing. Focus: US natural gas markets (Henry Hub, storage, weather demand outlook), then brief color on crude oil and gold. End with one broader macro note. Today is ${new Date().toLocaleDateString()}.${dataBlock} Under 170 words. Plain text, no markdown, no bullet asterisks. Spoken-friendly, direct tone.`;
+
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
         model: MODELS[currentModel === 'opus' ? 'opus' : 'sonnet'],
-        max_tokens:400,
-        messages:[{role:'user',content:`You are Jett. Give Brett a concise morning market briefing. Focus: US natural gas markets (Henry Hub, pipeline flows, storage, weather demand), then brief color on crude oil and gold. End with one broader macro note. Today is ${new Date().toLocaleDateString()}. Under 160 words. Plain text, no markdown, no bullet asterisks. Spoken-friendly tone.`}]
+        max_tokens:450,
+        messages:[{role:'user', content: prompt}]
       })
     });
     const d = await res.json();
     trackTokens(d);
-    el.innerHTML = `<div style="font-size:13px;font-weight:300;line-height:1.65">${esc(d.content[0]?.text||'No response')}</div>`;
+    const txt = d.content?.[0]?.text || 'No response';
+    el.innerHTML = `<div style="font-size:13px;font-weight:300;line-height:1.65">${esc(txt)}</div>`;
   } catch(e) { el.innerHTML='<div class="loading-msg">Could not generate briefing</div>'; }
 }
 
