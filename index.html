@@ -87,11 +87,22 @@ header {
 }
 .logo { font-family:'Rajdhani',sans-serif; font-size:26px; font-weight:700; letter-spacing:6px; color:var(--accent); text-shadow:var(--glow); line-height:1; }
 .logo-sub { font-family:'Share Tech Mono',monospace; font-size:8px; color:var(--text-dim); letter-spacing:3px; margin-top:2px; }
-.header-right { display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
-.clock { font-family:'Share Tech Mono',monospace; font-size:17px; color:var(--accent); letter-spacing:2px; }
-.status-row { display:flex; align-items:center; gap:5px; font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-dim); }
-.pulse { width:5px; height:5px; border-radius:50%; background:var(--accent2); box-shadow:0 0 6px var(--accent2); animation:blink 2s ease-in-out infinite; }
+.header-right { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.header-top-row { display:flex; align-items:center; gap:10px; }
+.clock { font-family:'Share Tech Mono',monospace; font-size:15px; color:var(--accent); letter-spacing:2px; opacity:0.9; }
+.status-row { display:flex; align-items:center; gap:5px; font-family:'Share Tech Mono',monospace; font-size:8px; color:var(--text-dim); }
+.pulse { width:4px; height:4px; border-radius:50%; background:var(--accent2); box-shadow:0 0 6px var(--accent2); animation:blink 2s ease-in-out infinite; }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+/* Battery indicator */
+.battery { display:flex; align-items:center; gap:5px; cursor:pointer; }
+.battery-shell { width:32px; height:14px; border-radius:3px; border:1.5px solid var(--text-dim); position:relative; overflow:hidden; }
+.battery-shell::after { content:''; position:absolute; right:-4px; top:3px; width:2px; height:6px; border-radius:0 1px 1px 0; background:var(--text-dim); }
+.battery-fill { height:100%; border-radius:1px; transition:width 0.5s ease, background 0.5s ease; }
+.battery-fill.high { background:var(--accent2); }
+.battery-fill.mid { background:var(--accent3); }
+.battery-fill.low { background:var(--danger); }
+.battery-pct { font-family:'Share Tech Mono',monospace; font-size:8px; color:var(--text-dim); letter-spacing:0.5px; min-width:22px; text-align:right; }
 
 /* ---- TABS ---- */
 .tabs {
@@ -227,15 +238,9 @@ header {
 /* ---- INPUT BAR ---- */
 .input-bar {
   flex-shrink:0;
-  padding:10px 12px;
+  padding:10px 14px 12px;
   border-top:1px solid var(--border);
   background:var(--surface);
-  display:flex; flex-direction:column; gap:8px;
-}
-.input-row-top {
-  display:flex; gap:8px; align-items:center;
-}
-.input-row-bottom {
   display:flex; gap:8px; align-items:flex-end;
 }
 #txtInput {
@@ -279,12 +284,10 @@ header {
   .orb svg { width:24px; height:24px; }
   .orb-label { font-size:9px; }
 
-  /* Input bar two-row */
-  .input-bar { padding:8px 10px; gap:6px; }
-  .input-row-top { display:flex; gap:6px; width:100%; }
-  .input-row-bottom { display:flex; gap:6px; width:100%; align-items:flex-end; }
-  .drive-trigger { padding:5px 10px; font-size:10px; }
-  .deep-btn { padding:0 8px; height:34px; font-size:8px; }
+  /* Input bar */
+  .input-bar { padding:8px 10px 10px; gap:6px; }
+  .drive-trigger { padding:0 8px; font-size:10px; }
+  .deep-btn { padding:0 8px; height:36px; font-size:8px; }
   #txtInput { font-size:14px; padding:8px 10px; }
   .ibtn { width:36px; height:36px; }
 
@@ -709,10 +712,16 @@ select.finput { appearance:none; cursor:pointer; }
   <header>
     <div>
       <div class="logo">JETT</div>
-      <div class="logo-sub">Personal AI · v4 · Brett's System</div>
+      <div class="logo-sub">Personal AI · v5 · Brett's System</div>
     </div>
     <div class="header-right">
-      <div class="clock" id="clock">--:--</div>
+      <div class="header-top-row">
+        <div class="battery" id="battery" onclick="showToast(getBatteryTooltip())" title="Token usage">
+          <div class="battery-shell"><div class="battery-fill high" id="battery-fill" style="width:100%"></div></div>
+          <span class="battery-pct" id="battery-pct">100%</span>
+        </div>
+        <div class="clock" id="clock">--:--</div>
+      </div>
       <div class="status-row"><div class="pulse"></div><span id="status-lbl">ONLINE</span></div>
       <div class="model-badge sonnet" id="model-badge" onclick="toggleModelMenu()" title="Switch model">
         <div class="mbdot"></div><span id="model-badge-txt">SONNET</span>
@@ -749,22 +758,18 @@ select.finput { appearance:none; cursor:pointer; }
     </div>
 
     <div class="input-bar">
-      <div class="input-row-top">
-        <button class="drive-trigger" onclick="enterDriveMode()" title="Drive Mode">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>
-          DRIVE
-        </button>
-        <button class="deep-btn" id="deep-btn" onclick="toggleDeepMode()" title="One-shot Opus — go deep on next message">DEEP</button>
-        <button class="ibtn" id="mic-btn" onclick="toggleVoice()" title="Voice" style="margin-left:auto">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10c0 3.87-3.13 7-7 7s-7-3.13-7-7"/><line x1="12" y1="17" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
-        </button>
-      </div>
-      <div class="input-row-bottom">
-        <textarea id="txtInput" rows="1" placeholder="Message Jett..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-        <button class="ibtn send" onclick="sendMsg()" title="Send">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        </button>
-      </div>
+      <button class="drive-trigger" onclick="enterDriveMode()" title="Drive Mode">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>
+        DRIVE
+      </button>
+      <button class="deep-btn" id="deep-btn" onclick="toggleDeepMode()" title="One-shot Opus — go deep on next message">DEEP</button>
+      <textarea id="txtInput" rows="1" placeholder="Message Jett..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="ibtn" id="mic-btn" onclick="toggleVoice()" title="Voice">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10c0 3.87-3.13 7-7 7s-7-3.13-7-7"/><line x1="12" y1="17" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+      </button>
+      <button class="ibtn send" onclick="sendMsg()" title="Send">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
     </div>
   </div>
 
@@ -888,6 +893,29 @@ select.finput { appearance:none; cursor:pointer; }
         </div>
       </div>
 
+      <div class="card card-accent-blue">
+        <div class="card-header">◈ Token Budget</div>
+        <div class="card-body">
+          <div class="field">
+            <label class="flabel">Monthly Token Limit</label>
+            <select class="finput" id="token-limit">
+              <option value="500000">500K tokens</option>
+              <option value="1000000" selected>1M tokens</option>
+              <option value="2000000">2M tokens</option>
+              <option value="5000000">5M tokens</option>
+              <option value="10000000">10M tokens</option>
+            </select>
+          </div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);line-height:2;margin-top:8px">
+            <div id="tokens-used-display">USED: 0 tokens</div>
+            <div id="tokens-remaining-display">REMAINING: 1,000,000 tokens</div>
+            <div id="tokens-reset-display">RESETS: 1st of each month</div>
+          </div>
+          <button class="btn btn-blue" onclick="saveTokenBudget()">▶ SAVE BUDGET</button>
+          <button class="btn btn-orange" onclick="resetTokenUsage()" style="margin-top:4px">↻ RESET USAGE COUNTER</button>
+        </div>
+      </div>
+
       <div class="card card-accent-purple">
         <div class="card-header">◈ Model Routing</div>
         <div class="card-body">
@@ -966,7 +994,7 @@ select.finput { appearance:none; cursor:pointer; }
         <div class="card-header" style="color:var(--danger)">◈ System</div>
         <div class="card-body">
           <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);line-height:2">
-            <div>JETT v4.0 — Brett's System · Opus Audit</div>
+            <div>JETT v5.0 — Brett's System</div>
             <div>ENGINE: Claude Sonnet + Opus (hybrid)</div>
             <div>STORAGE: Device localStorage only</div>
             <div id="sys-size">DATA: Calculating...</div>
@@ -994,6 +1022,74 @@ let recognition = null;
 let isSpeaking = false;
 let voices = [];
 let lastModelUsed = 'sonnet'; // track what model actually fired per message
+
+// =============================================================
+// TOKEN TRACKING
+// =============================================================
+function getTokenUsage() {
+  try {
+    const data = JSON.parse(localStorage.getItem('jett_tokens') || '{}');
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
+    if (data.monthKey !== monthKey) {
+      return { used: 0, monthKey, limit: data.limit || 1000000 };
+    }
+    return { used: data.used || 0, monthKey, limit: data.limit || 1000000 };
+  } catch(e) { return { used: 0, monthKey: '', limit: 1000000 }; }
+}
+
+function saveTokenUsage(usage) {
+  localStorage.setItem('jett_tokens', JSON.stringify(usage));
+  updateBattery();
+}
+
+function trackTokens(apiResponse) {
+  if (!apiResponse || !apiResponse.usage) return;
+  const usage = getTokenUsage();
+  usage.used += (apiResponse.usage.input_tokens || 0) + (apiResponse.usage.output_tokens || 0);
+  saveTokenUsage(usage);
+}
+
+function updateBattery() {
+  const usage = getTokenUsage();
+  const remaining = Math.max(0, usage.limit - usage.used);
+  const pct = Math.round((remaining / usage.limit) * 100);
+  const fill = document.getElementById('battery-fill');
+  const label = document.getElementById('battery-pct');
+  if (!fill || !label) return;
+  fill.style.width = pct + '%';
+  fill.className = 'battery-fill ' + (pct > 40 ? 'high' : pct > 15 ? 'mid' : 'low');
+  label.textContent = pct + '%';
+  const ud = document.getElementById('tokens-used-display');
+  const rd = document.getElementById('tokens-remaining-display');
+  if (ud) ud.textContent = `USED: ${usage.used.toLocaleString()} tokens`;
+  if (rd) rd.textContent = `REMAINING: ${remaining.toLocaleString()} tokens`;
+}
+
+function getBatteryTooltip() {
+  const u = getTokenUsage();
+  const rem = Math.max(0, u.limit - u.used);
+  return `${rem.toLocaleString()} tokens remaining of ${u.limit.toLocaleString()}`;
+}
+
+function saveTokenBudget() {
+  const limit = parseInt(document.getElementById('token-limit').value);
+  const usage = getTokenUsage();
+  usage.limit = limit;
+  saveTokenUsage(usage);
+  showToast('Token budget saved');
+}
+
+function resetTokenUsage() {
+  if (confirm('Reset token usage counter to zero?')) {
+    const usage = getTokenUsage();
+    usage.used = 0;
+    const now = new Date();
+    usage.monthKey = `${now.getFullYear()}-${now.getMonth()}`;
+    saveTokenUsage(usage);
+    showToast('Usage counter reset');
+  }
+}
 
 // =============================================================
 // BRETT'S PROFILE — baked in, never leaves device
@@ -1103,6 +1199,19 @@ TODAY: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',mo
 
 RESPONSE STYLE: Spoken-friendly — no markdown headers, no bullet asterisks, no bold text. Use plain conversational text with line breaks for structure. Reference logged notes naturally, don't recite them robotically.
 
+CHAT-TO-LOG SYSTEM:
+You can save notes and events directly from conversation. When Brett asks you to remember something, log something, or save an event, include a structured command at the END of your response using this exact format:
+
+[LOG:tag:text] — saves a note. Tags: general, maddy, dutch, work, event
+[EVENT:YYYY-MM-DD:text] — saves a dated event
+
+Examples:
+- Brett says "Remember that Maddy wants to try Uchi for her birthday" → include [LOG:maddy:Wants to try Uchi for her birthday] at the end of your response.
+- Brett says "We have dinner reservations Saturday March 29" → include [EVENT:2026-03-29:Dinner reservations] and [LOG:event:Dinner reservations March 29] at the end.
+- Brett says "Dutch was low on food last time I checked" → include [LOG:dutch:Was low on food last check] at the end.
+
+You can include multiple commands. Always confirm what you logged in your spoken response BEFORE the commands. The commands will be hidden from Brett — he just sees your natural response and gets a toast notification that it was logged.
+
 DAILY BRIEFING FORMAT (when asked):
 1. Upcoming — anything in the next 7 days
 2. Market Pulse — nat gas color + relevant energy news
@@ -1150,6 +1259,11 @@ window.onload = () => {
   if (dc.interval) document.getElementById('dutch-interval').value = dc.interval;
   const key = localStorage.getItem('jett_key');
   if (key) { document.getElementById('api-key').value = key; setKeyStatus(true); }
+  // Init battery + token budget
+  updateBattery();
+  const tu = getTokenUsage();
+  const tlEl = document.getElementById('token-limit');
+  if (tlEl) tlEl.value = tu.limit;
 };
 
 function initWelcome() {
@@ -1157,7 +1271,7 @@ function initWelcome() {
   // System message
   const sys = document.createElement('div');
   sys.className = 'msg system';
-  sys.innerHTML = '<div class="bubble">JETT v4 · Opus + Sonnet hybrid · All data stored locally · Nothing leaves this device except API calls</div>';
+  sys.innerHTML = '<div class="bubble">JETT v5 · Opus + Sonnet hybrid · Chat-to-log active · All data stored locally</div>';
   c.appendChild(sys);
 
   if (history.length > 0) {
@@ -1167,7 +1281,7 @@ function initWelcome() {
     });
   } else {
     // Fresh welcome
-    appendMsg('assistant', "Good to have you back, Brett. I'm fully loaded with your profile — v4 is live. Talk to me, or ask for your morning briefing to kick things off.", false, 'sonnet');
+    appendMsg('assistant', "Good to have you back, Brett. v5 is live — token tracking, chat-to-log, full hybrid routing. Talk to me, or ask for your morning briefing to kick things off.", false, 'sonnet');
   }
 }
 
@@ -1290,11 +1404,12 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 
 function exportData() {
   const data = {
-    version: 'jett_v4',
+    version: 'jett_v5',
     exported: new Date().toISOString(),
     notes, events, history,
     settings: getSettings(),
     dutch: getDutchConfig(),
+    tokens: getTokenUsage(),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -1333,6 +1448,7 @@ function importData(input) {
       }
       if (data.settings) localStorage.setItem('jett_settings', JSON.stringify(data.settings));
       if (data.dutch) localStorage.setItem('jett_dutch', JSON.stringify(data.dutch));
+      if (data.tokens) localStorage.setItem('jett_tokens', JSON.stringify(data.tokens));
       closeModal('import-modal');
       showToast('Data imported — refreshing');
       setTimeout(() => location.reload(), 800);
@@ -1537,6 +1653,9 @@ function appendMsg(role, text, animate=true, model='sonnet') {
 function formatResponse(text) {
   if (!text) return '';
   let s = String(text);
+  // Strip chat-to-log commands before display
+  s = s.replace(/\[LOG:\w+:[^\]]+\]/g, '');
+  s = s.replace(/\[EVENT:\d{4}-\d{2}-\d{2}:[^\]]+\]/g, '');
   // Remove markdown bold/italic
   s = s.replace(/\*\*(.+?)\*\*/g, '$1');
   s = s.replace(/\*(.+?)\*/g, '$1');
@@ -1697,8 +1816,10 @@ async function callClaude(userMsg, systemOverride) {
     }
     const data = await res.json();
     const reply = data.content[0]?.text || "No response received.";
+    trackTokens(data);
     history.push({ role:'assistant', content: reply, model: model });
     saveHistory();
+    parseChatActions(reply);
     // Reset badge to current locked model after response
     updateModelBadge(currentModel);
     return reply;
@@ -1707,6 +1828,47 @@ async function callClaude(userMsg, systemOverride) {
     updateModelBadge(currentModel);
     return "Network error. Check your connection.";
   }
+}
+
+// =============================================================
+// CHAT-TO-LOG — Parse Jett's responses for structured commands
+// =============================================================
+function parseChatActions(text) {
+  if (!text) return;
+  let logged = 0;
+
+  const logMatches = text.matchAll(/\[LOG:(\w+):([^\]]+)\]/g);
+  for (const m of logMatches) {
+    const tag = m[1].toLowerCase();
+    const noteText = m[2].trim();
+    if (['general','maddy','dutch','work','event'].includes(tag) && noteText) {
+      const note = { id: Date.now() + logged, tag, text: noteText, date: null, ts: new Date().toISOString(), isDone: false };
+      notes.unshift(note);
+      logged++;
+    }
+  }
+
+  const eventMatches = text.matchAll(/\[EVENT:(\d{4}-\d{2}-\d{2}):([^\]]+)\]/g);
+  for (const m of eventMatches) {
+    const date = m[1];
+    const eventText = m[2].trim();
+    if (date && eventText) {
+      events.push({ id: Date.now() + logged + 100, date, text: eventText, ts: new Date().toISOString() });
+      logged++;
+    }
+  }
+
+  if (logged > 0) {
+    saveNotes();
+    saveEvents();
+    renderLog();
+    showToast(`Logged ${logged} item${logged > 1 ? 's' : ''} to memory`);
+  }
+}
+
+function stripLogCommands(text) {
+  if (!text) return '';
+  return text.replace(/\[LOG:\w+:[^\]]+\]/g, '').replace(/\[EVENT:\d{4}-\d{2}-\d{2}:[^\]]+\]/g, '').trim();
 }
 
 // =============================================================
@@ -1919,6 +2081,7 @@ async function loadAIBriefing() {
       })
     });
     const d = await res.json();
+    trackTokens(d);
     el.innerHTML = `<div style="font-size:13px;font-weight:300;line-height:1.65">${esc(d.content[0]?.text||'No response')}</div>`;
   } catch(e) { el.innerHTML='<div class="loading-msg">Could not generate briefing</div>'; }
 }
@@ -2088,11 +2251,14 @@ async function driveProcessMessage(msg) {
     });
     const data = await res.json();
     const reply = data.content?.[0]?.text || "Didn't catch that.";
+    trackTokens(data);
+    parseChatActions(reply);
+    const cleanReply = stripLogCommands(reply);
     history.push({ role:'assistant', content: reply, model: model });
     saveHistory();
     updateModelBadge(currentModel);
-    document.getElementById('drive-response').textContent = reply;
-    driveSpeak(reply, () => {
+    document.getElementById('drive-response').textContent = cleanReply;
+    driveSpeak(cleanReply, () => {
       if (driveActive) driveStartListening();
     });
   } catch(e) {
