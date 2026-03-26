@@ -1069,7 +1069,7 @@ select.finput { appearance:none; cursor:pointer; }
         <div class="card-header" style="color:var(--danger)">◈ System</div>
         <div class="card-body">
           <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);line-height:2">
-            <div>JETT v5.3 — Brett's System</div>
+            <div>JETT v5.4 — Brett's System</div>
             <div>ENGINE: Claude Sonnet + Opus (hybrid)</div>
             <div>STORAGE: Device localStorage only</div>
             <div id="sys-size">DATA: Calculating...</div>
@@ -1107,7 +1107,10 @@ function getTokenUsage() {
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
     if (data.monthKey !== monthKey) {
-      return { used: 0, monthKey, limit: data.limit || 1000000 };
+      // New month — reset and immediately persist so it survives reloads
+      const reset = { used: 0, monthKey, limit: data.limit || 1000000 };
+      localStorage.setItem('jett_tokens', JSON.stringify(reset));
+      return reset;
     }
     return { used: data.used || 0, monthKey, limit: data.limit || 1000000 };
   } catch(e) { return { used: 0, monthKey: '', limit: 1000000 }; }
@@ -1342,6 +1345,8 @@ window.onload = () => {
   if (eiaKey) { document.getElementById('eia-key').value = eiaKey; setEiaKeyStatus(true); }
   // Init local file sync
   initFileSync();
+  // Flush data to linked file on page hide (tab close / app switch)
+  window.addEventListener('pagehide', () => { writeToLinkedFile(); });
   // Init battery + token budget
   updateBattery();
   const tu = getTokenUsage();
@@ -1354,7 +1359,7 @@ function initWelcome() {
   // System message
   const sys = document.createElement('div');
   sys.className = 'msg system';
-  sys.innerHTML = '<div class="bubble">JETT v5.3 · Opus + Sonnet hybrid · EIA + Equity feeds · Local file sync</div>';
+  sys.innerHTML = '<div class="bubble">JETT v5.4 · Opus + Sonnet hybrid · EIA + Equity feeds · Local file sync</div>';
   c.appendChild(sys);
 
   if (history.length > 0) {
@@ -1573,17 +1578,16 @@ function buildSyncPayload() {
 async function writeToLinkedFile() {
   const handle = await getFileHandleFromIDB();
   if (!handle) return;
-  if (!await checkFilePermission(handle, 'readwrite')) {
-    setFileSyncStatus('err', 'Permission denied — relink file');
-    return;
-  }
   try {
+    const perm = await checkFilePermission(handle, 'readwrite');
+    if (!perm) { setFileSyncStatus('err', 'Permission denied — tap Link Local File again'); return; }
     const writable = await handle.createWritable();
     await writable.write(JSON.stringify(buildSyncPayload(), null, 2));
     await writable.close();
     setFileSyncStatus('ok', `Synced · ${handle.name} · ${new Date().toLocaleTimeString()}`);
   } catch(e) {
-    setFileSyncStatus('err', 'Write failed — ' + e.message);
+    setFileSyncStatus('err', 'Write failed: ' + e.message);
+    console.error('File sync write error:', e);
   }
 }
 
@@ -1642,10 +1646,12 @@ async function linkLocalFile() {
     await saveFileHandleToIDB(handle);
     setFileSyncStatus('ok', `Linked · ${handle.name}`);
     updateFileSyncButtons(true);
-    showToast('File linked — syncing now');
+    showToast('File linked — writing now');
     await writeToLinkedFile();
   } catch(e) {
-    if (e.name !== 'AbortError') showToast('Could not link file');
+    if (e.name === 'AbortError') return;
+    showToast('Link failed: ' + e.message);
+    console.error('File link error:', e);
   }
 }
 
@@ -1677,10 +1683,12 @@ async function initFileSync() {
   if (!isFSASupported()) return;
   const handle = await getFileHandleFromIDB();
   if (!handle) return;
-  // Don't auto-request permission on load (requires user gesture)
-  // Just show linked status; user can tap "Load from File" to pull data
   setFileSyncStatus('ok', `Linked · ${handle.name} — tap Load to sync`);
   updateFileSyncButtons(true);
+  // Flush to file when user navigates away or switches apps
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') writeToLinkedFile();
+  });
 }
 
 // =============================================================
@@ -2498,15 +2506,24 @@ async function loadEnergyIntel() {
 
   // EIA v1 API — reliable series IDs
   const eiaFetch = async (seriesId, num = 2) => {
-    const r = await fetch(
-      `https://api.eia.gov/series/?api_key=${eiaKey}&series_id=${seriesId}&num=${num}&out=json`,
-      { signal: AbortSignal.timeout(12000) }
-    );
-    if (!r.ok) throw new Error('EIA HTTP ' + r.status);
-    const d = await r.json();
-    if (d.data?.error) throw new Error(d.data.error);
-    return d?.series?.[0]?.data || [];
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
+    try {
+      const r = await fetch(
+        `https://api.eia.gov/series/?api_key=${encodeURIComponent(eiaKey)}&series_id=${seriesId}&num=${num}&out=json`,
+        { signal: ctrl.signal }
+      );
+      if (!r.ok) throw new Error(`EIA HTTP ${r.status}`);
+      const d = await r.json();
+      if (d.data?.error) throw new Error(d.data.error);
+      if (!d.series || !d.series[0]) throw new Error('No series in response');
+      return d.series[0].data || [];
+    } finally {
+      clearTimeout(timer);
+    }
   };
+
+  let hhErr = '', storErr = '';
 
   // Henry Hub daily spot price
   try {
@@ -2524,7 +2541,7 @@ async function loadEnergyIntel() {
       </div>`;
       html += `<div style="font-size:10px;color:var(--text-dim);padding:0 0 8px">${fmtEiaDate(data[0][0])}</div>`;
     }
-  } catch(e) {}
+  } catch(e) { hhErr = e.message; }
 
   // Weekly working gas storage — lower 48
   try {
@@ -2543,10 +2560,11 @@ async function loadEnergyIntel() {
       </div>`;
       html += `<div style="font-size:10px;color:var(--text-dim);padding:0 0 2px">${fmtEiaDate(data[0][0])} · WoW ${label}</div>`;
     }
-  } catch(e) {}
+  } catch(e) { storErr = e.message; }
 
   if (!html) {
-    el.innerHTML = '<div class="loading-msg">EIA data unavailable — verify key at eia.gov/opendata</div>';
+    const errDetail = [hhErr, storErr].filter(Boolean).join(' / ') || 'network error';
+    el.innerHTML = `<div class="loading-msg">EIA unavailable: ${esc(errDetail)}</div>`;
     return null;
   }
 
