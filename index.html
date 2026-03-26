@@ -908,6 +908,11 @@ select.finput { appearance:none; cursor:pointer; }
         <div class="card-body" id="energy-intel-body"><div class="loading-msg">—</div></div>
       </div>
 
+      <div class="card card-accent-purple">
+        <div class="card-header">▲ Equity Watch</div>
+        <div class="card-body" id="stocks-body"><div class="loading-msg">—</div></div>
+      </div>
+
       <div class="card card-accent-orange">
         <div class="card-header">◎ On The Radar</div>
         <div class="card-body" id="radar-body"><div class="loading-msg">—</div></div>
@@ -1064,7 +1069,7 @@ select.finput { appearance:none; cursor:pointer; }
         <div class="card-header" style="color:var(--danger)">◈ System</div>
         <div class="card-body">
           <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);line-height:2">
-            <div>JETT v5.0 — Brett's System</div>
+            <div>JETT v5.3 — Brett's System</div>
             <div>ENGINE: Claude Sonnet + Opus (hybrid)</div>
             <div>STORAGE: Device localStorage only</div>
             <div id="sys-size">DATA: Calculating...</div>
@@ -1349,7 +1354,7 @@ function initWelcome() {
   // System message
   const sys = document.createElement('div');
   sys.className = 'msg system';
-  sys.innerHTML = '<div class="bubble">JETT v5 · Opus + Sonnet hybrid · Chat-to-log active · All data stored locally</div>';
+  sys.innerHTML = '<div class="bubble">JETT v5.3 · Opus + Sonnet hybrid · EIA + Equity feeds · Local file sync</div>';
   c.appendChild(sys);
 
   if (history.length > 0) {
@@ -2376,25 +2381,29 @@ function speakChunked(text) {
 // =============================================================
 async function loadBriefing() {
   renderRadar();
-  const [weatherData, commodityData, energyData] = await Promise.allSettled([
+  const [weatherData, commodityData, energyData, stockData] = await Promise.allSettled([
     loadWeather(),
     loadCommodities(),
-    loadEnergyIntel()
+    loadEnergyIntel(),
+    loadStockMarket()
   ]);
-  // Build market context from real data, pass to AI briefing
-  const mkt = buildMarketContext(commodityData, energyData);
+  const mkt = buildMarketContext(commodityData, energyData, stockData);
   loadAIBriefing(mkt);
 }
 
-function buildMarketContext(commodityResult, energyResult) {
+function buildMarketContext(commodityResult, energyResult, stockResult) {
   const lines = [];
-  if (commodityResult.status === 'fulfilled' && commodityResult.value) {
-    lines.push('Live market prices:');
+  if (commodityResult?.status === 'fulfilled' && commodityResult.value) {
+    lines.push('Futures prices:');
     lines.push(...commodityResult.value);
   }
-  if (energyResult.status === 'fulfilled' && energyResult.value) {
+  if (energyResult?.status === 'fulfilled' && energyResult.value) {
     lines.push('EIA natural gas data:');
     lines.push(...energyResult.value);
+  }
+  if (stockResult?.status === 'fulfilled' && stockResult.value) {
+    lines.push('Equity markets:');
+    lines.push(...stockResult.value);
   }
   return lines.length ? lines.join('\n') : null;
 }
@@ -2479,69 +2488,106 @@ async function loadEnergyIntel() {
   const card = document.getElementById('energy-intel-card');
   const el = document.getElementById('energy-intel-body');
 
-  if (!eiaKey) {
-    card.style.display = 'none';
-    return null;
-  }
+  if (!eiaKey) { card.style.display = 'none'; return null; }
 
   card.style.display = 'block';
   el.innerHTML = '<div class="loading-msg">Fetching EIA data...</div>';
 
   const contextLines = [];
+  let html = '';
 
-  try {
-    // Henry Hub daily spot price (RNGWHHD)
-    const hhRes = await fetch(
-      `https://api.eia.gov/v2/natural-gas/pri/sum/dcu/nus/monthly/data/?api_key=${eiaKey}&frequency=monthly&data[0]=value&facets[duoarea][]=NUS&facets[product][]=EPG0&sort[0][column]=period&sort[0][direction]=desc&length=2`,
-      { signal: AbortSignal.timeout(10000) }
+  // EIA v1 API — reliable series IDs
+  const eiaFetch = async (seriesId, num = 2) => {
+    const r = await fetch(
+      `https://api.eia.gov/series/?api_key=${eiaKey}&series_id=${seriesId}&num=${num}&out=json`,
+      { signal: AbortSignal.timeout(12000) }
     );
-    if (hhRes.ok) {
-      const hhData = await hhRes.json();
-      const recs = hhData?.response?.data;
-      if (recs && recs.length >= 1) {
-        const latest = recs[0];
-        const prev = recs[1];
-        const price = parseFloat(latest.value).toFixed(2);
-        const prevPrice = prev ? parseFloat(prev.value).toFixed(2) : null;
-        const chg = prevPrice ? (((parseFloat(price) - parseFloat(prevPrice)) / parseFloat(prevPrice)) * 100).toFixed(1) : null;
-        const chgStr = chg ? ` (${parseFloat(chg)>=0?'+':''}${chg}% vs prior month)` : '';
-        contextLines.push(`Henry Hub avg: $${price}/MMBtu${chgStr}`);
-        el.innerHTML = `<div class="commodity-row"><span style="color:var(--text-dim)">Henry Hub</span><span>$${price}/MMBtu</span><span class="${chg&&parseFloat(chg)>=0?'up':'dn'}">${chg?(parseFloat(chg)>=0?'▲':'▼')+' '+Math.abs(chg)+'%':''}</span></div>`;
-      }
+    if (!r.ok) throw new Error('EIA HTTP ' + r.status);
+    const d = await r.json();
+    if (d.data?.error) throw new Error(d.data.error);
+    return d?.series?.[0]?.data || [];
+  };
+
+  // Henry Hub daily spot price
+  try {
+    const data = await eiaFetch('NG.RNGWHHD.D', 3);
+    if (data.length >= 1) {
+      const price = parseFloat(data[0][1]).toFixed(2);
+      const prev  = data[1] ? parseFloat(data[1][1]) : null;
+      const chg   = prev ? (((parseFloat(price) - prev) / prev) * 100).toFixed(1) : null;
+      const isUp  = chg ? parseFloat(chg) >= 0 : true;
+      contextLines.push(`Henry Hub spot: $${price}/MMBtu${chg ? ` (${isUp?'+':''}${chg}% DoD)` : ''}`);
+      html += `<div class="commodity-row">
+        <span style="color:var(--text-dim)">Henry Hub Spot</span>
+        <span>$${price}/MMBtu</span>
+        <span class="${isUp?'up':'dn'}">${chg?(isUp?'▲':'▼')+' '+Math.abs(chg)+'%':'—'}</span>
+      </div>`;
+      html += `<div style="font-size:10px;color:var(--text-dim);padding:0 0 8px">${fmtEiaDate(data[0][0])}</div>`;
     }
   } catch(e) {}
 
+  // Weekly working gas storage — lower 48
   try {
-    // Weekly working gas storage (lower 48)
-    const storRes = await fetch(
-      `https://api.eia.gov/v2/natural-gas/stor/wkly/data/?api_key=${eiaKey}&frequency=weekly&data[0]=value&facets[duoarea][]=NUS&facets[process][]=VGS&sort[0][column]=period&sort[0][direction]=desc&length=6`,
-      { signal: AbortSignal.timeout(10000) }
-    );
-    if (storRes.ok) {
-      const storData = await storRes.json();
-      const recs = storData?.response?.data;
-      if (recs && recs.length >= 2) {
-        const latest = recs[0];
-        const prior = recs[1];
-        const bcf = Math.round(parseFloat(latest.value));
-        const priorBcf = Math.round(parseFloat(prior.value));
-        const injWd = bcf - priorBcf;
-        const sign = injWd >= 0 ? '+' : '';
-        const label = injWd >= 0 ? 'injection' : 'withdrawal';
-        contextLines.push(`Working gas storage: ${bcf.toLocaleString()} Bcf (${sign}${injWd} Bcf week-over-week ${label})`);
-        const storEl = document.getElementById('energy-intel-body');
-        storEl.innerHTML += `<div class="commodity-row"><span style="color:var(--text-dim)">Storage (L48)</span><span>${bcf.toLocaleString()} Bcf</span><span class="${injWd>=0?'up':'dn'}">${sign}${injWd} Bcf</span></div>`;
-        storEl.innerHTML += `<div style="font-size:10px;color:var(--text-dim);padding:4px 0 2px">${latest.period} · week-over-week ${label}</div>`;
-      }
+    const data = await eiaFetch('NG.NW2_EPG0_SWO_R48_BCF.W', 2);
+    if (data.length >= 2) {
+      const bcf      = Math.round(parseFloat(data[0][1]));
+      const priorBcf = Math.round(parseFloat(data[1][1]));
+      const delta    = bcf - priorBcf;
+      const isInj    = delta >= 0;
+      const label    = isInj ? 'injection' : 'withdrawal';
+      contextLines.push(`Working gas storage (L48): ${bcf.toLocaleString()} Bcf (${isInj?'+':''}${delta} Bcf WoW ${label})`);
+      html += `<div class="commodity-row">
+        <span style="color:var(--text-dim)">Storage L48</span>
+        <span>${bcf.toLocaleString()} Bcf</span>
+        <span class="${isInj?'up':'dn'}">${isInj?'▲':'▼'} ${Math.abs(delta)} Bcf</span>
+      </div>`;
+      html += `<div style="font-size:10px;color:var(--text-dim);padding:0 0 2px">${fmtEiaDate(data[0][0])} · WoW ${label}</div>`;
     }
   } catch(e) {}
 
-  if (!contextLines.length) {
-    el.innerHTML = '<div class="loading-msg">EIA data unavailable — check key or try later</div>';
+  if (!html) {
+    el.innerHTML = '<div class="loading-msg">EIA data unavailable — verify key at eia.gov/opendata</div>';
     return null;
   }
 
-  return contextLines;
+  el.innerHTML = html;
+  return contextLines.length ? contextLines : null;
+}
+
+function fmtEiaDate(d) {
+  // EIA dates: YYYYMMDD or YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ
+  try {
+    const s = String(d).replace(/[-T:Z]/g,'').slice(0,8);
+    return new Date(s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  } catch(e) { return d; }
+}
+
+async function loadStockMarket() {
+  const el = document.getElementById('stocks-body');
+  if (!el) return null;
+  el.innerHTML = '<div class="loading-msg">Loading equities...</div>';
+
+  const tickers = [
+    { s:'SPY',  n:'S&P 500 ETF'   },
+    { s:'QQQ',  n:'Nasdaq 100'    },
+    { s:'XLE',  n:'Energy Sector' },
+    { s:'XOP',  n:'Oil & Gas E&P' },
+    { s:'LNG',  n:'Cheniere'      },
+  ];
+
+  const results = await Promise.allSettled(tickers.map(t => fetchYahooQuote(t.s)));
+  const contextLines = [];
+
+  el.innerHTML = results.map((r, i) => {
+    if (r.status === 'fulfilled' && r.value) {
+      const d = r.value;
+      contextLines.push(`${tickers[i].n} (${tickers[i].s}): $${d.price} (${d.up?'+':''}${d.chg}%)`);
+      return `<div class="commodity-row"><span style="color:var(--text-dim)">${tickers[i].n} <span style="opacity:0.5;font-size:10px">${tickers[i].s}</span></span><span>$${d.price}</span><span class="${d.up?'up':'dn'}">${d.up?'▲':'▼'} ${Math.abs(d.chg)}%</span></div>`;
+    }
+    return `<div class="commodity-row"><span style="color:var(--text-dim)">${tickers[i].n}</span><span style="color:var(--text-muted)">—</span><span style="color:var(--text-muted)">unavailable</span></div>`;
+  }).join('');
+
+  return contextLines.length ? contextLines : null;
 }
 
 function renderRadar() {
