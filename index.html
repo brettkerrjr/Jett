@@ -1,0 +1,2073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Jett">
+<title>Jett</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@100;300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #020c14;
+  --surface: #061828;
+  --panel: #081e30;
+  --border: #0d3650;
+  --border2: #0a2a40;
+  --accent: #00c8ff;
+  --accent2: #00ff9d;
+  --accent3: #ff6b35;
+  --accent4: #c084fc;
+  --text: #b8dff0;
+  --text-dim: #3d6a88;
+  --text-muted: #162e42;
+  --danger: #ff3860;
+  --glow: 0 0 24px rgba(0,200,255,0.25);
+  --glow2: 0 0 24px rgba(0,255,157,0.25);
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { height:100%; overflow:hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 300;
+}
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:
+    linear-gradient(rgba(0,200,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,200,255,0.025) 1px, transparent 1px);
+  background-size: 44px 44px;
+  pointer-events:none; z-index:0;
+}
+body::after {
+  content:'';
+  position:fixed; inset:0;
+  background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.04) 3px,rgba(0,0,0,0.04) 4px);
+  pointer-events:none; z-index:1;
+}
+
+/* ---- CORNERS ---- */
+.hud-corner { position:fixed; width:50px; height:50px; z-index:5; pointer-events:none; }
+.hud-corner::before,.hud-corner::after { content:''; position:absolute; background:var(--accent); opacity:0.5; }
+.hud-corner.tl { top:10px; left:10px; }
+.hud-corner.tl::before { top:0;left:0;width:18px;height:1.5px; }
+.hud-corner.tl::after  { top:0;left:0;width:1.5px;height:18px; }
+.hud-corner.tr { top:10px; right:10px; }
+.hud-corner.tr::before { top:0;right:0;width:18px;height:1.5px; }
+.hud-corner.tr::after  { top:0;right:0;width:1.5px;height:18px; }
+.hud-corner.bl { bottom:10px; left:10px; }
+.hud-corner.bl::before { bottom:0;left:0;width:18px;height:1.5px; }
+.hud-corner.bl::after  { bottom:0;left:0;width:1.5px;height:18px; }
+.hud-corner.br { bottom:10px; right:10px; }
+.hud-corner.br::before { bottom:0;right:0;width:18px;height:1.5px; }
+.hud-corner.br::after  { bottom:0;right:0;width:1.5px;height:18px; }
+
+/* ---- LAYOUT ---- */
+#app {
+  position:relative; z-index:10;
+  max-width:480px; margin:0 auto;
+  height:100vh; height:100dvh;
+  display:flex; flex-direction:column;
+}
+
+/* ---- HEADER ---- */
+header {
+  flex-shrink:0;
+  padding:14px 18px 10px;
+  display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(0,200,255,0.04) 0%,transparent 100%);
+}
+.logo { font-family:'Rajdhani',sans-serif; font-size:26px; font-weight:700; letter-spacing:6px; color:var(--accent); text-shadow:var(--glow); line-height:1; }
+.logo-sub { font-family:'Share Tech Mono',monospace; font-size:8px; color:var(--text-dim); letter-spacing:3px; margin-top:2px; }
+.header-right { display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
+.clock { font-family:'Share Tech Mono',monospace; font-size:17px; color:var(--accent); letter-spacing:2px; }
+.status-row { display:flex; align-items:center; gap:5px; font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-dim); }
+.pulse { width:5px; height:5px; border-radius:50%; background:var(--accent2); box-shadow:0 0 6px var(--accent2); animation:blink 2s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+/* ---- TABS ---- */
+.tabs {
+  flex-shrink:0;
+  display:flex;
+  border-bottom:1px solid var(--border);
+  background:var(--surface);
+}
+.tab {
+  flex:1; padding:9px 2px 8px;
+  font-family:'Rajdhani',sans-serif; font-size:11px; font-weight:700; letter-spacing:1.5px;
+  color:var(--text-dim); text-transform:uppercase;
+  border:none; background:none; cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all 0.2s;
+}
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); background:rgba(0,200,255,0.04); }
+
+/* ---- PANELS ---- */
+.panel { display:none; flex:1; flex-direction:column; overflow:hidden; min-height:0; }
+.panel.active { display:flex; }
+.scroll-body { flex:1; overflow-y:auto; padding:14px 14px 20px; display:flex; flex-direction:column; gap:12px; }
+.scroll-body::-webkit-scrollbar { width:2px; }
+.scroll-body::-webkit-scrollbar-thumb { background:var(--border); border-radius:1px; }
+
+/* ---- CARDS ---- */
+.card {
+  background:var(--panel);
+  border:1px solid var(--border2);
+  border-radius:3px;
+  overflow:hidden;
+}
+.card-header {
+  padding:9px 13px;
+  font-family:'Rajdhani',sans-serif; font-size:10px; font-weight:700; letter-spacing:3px;
+  text-transform:uppercase;
+  border-bottom:1px solid var(--border2);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.card-body { padding:12px 13px; }
+.card-accent-blue .card-header { color:var(--accent); }
+.card-accent-green .card-header { color:var(--accent2); }
+.card-accent-orange .card-header { color:var(--accent3); }
+.card-accent-purple .card-header { color:var(--accent4); }
+.card-accent-blue { border-left:2px solid var(--accent); }
+.card-accent-green { border-left:2px solid var(--accent2); }
+.card-accent-orange { border-left:2px solid var(--accent3); }
+.card-accent-purple { border-left:2px solid var(--accent4); }
+
+/* ---- CHAT ---- */
+#chat-messages {
+  flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:12px;
+  scroll-behavior:smooth; min-height:0;
+}
+#chat-messages::-webkit-scrollbar { width:2px; }
+#chat-messages::-webkit-scrollbar-thumb { background:var(--border); }
+
+.msg { display:flex; flex-direction:column; animation:fadeUp 0.25s ease-out; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.msg.user { align-items:flex-end; }
+.msg.assistant { align-items:flex-start; }
+.bubble {
+  max-width:86%; padding:10px 13px;
+  font-size:13.5px; line-height:1.55; font-weight:300;
+  word-wrap:break-word;
+}
+.msg.user .bubble {
+  background:rgba(0,200,255,0.08);
+  border:1px solid rgba(0,200,255,0.25);
+  border-radius:8px 2px 8px 8px;
+  color:var(--text);
+}
+.msg.assistant .bubble {
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:2px 8px 8px 8px;
+  color:var(--text);
+  position:relative;
+}
+.msg.assistant .bubble::before {
+  content:attr(data-label);
+  position:absolute; top:-8px; left:8px;
+  font-family:'Share Tech Mono',monospace; font-size:7px; letter-spacing:2px;
+  background:var(--panel); padding:0 4px;
+}
+.msg.assistant .bubble[data-model="sonnet"]::before { color:var(--accent); }
+.msg.assistant .bubble[data-model="opus"]::before { color:var(--accent4); }
+.msg.assistant .bubble[data-model="opus"] {
+  border-color:rgba(192,132,252,0.2);
+  background:linear-gradient(135deg, var(--panel), rgba(192,132,252,0.03));
+}
+.msg.system .bubble {
+  background:rgba(0,255,157,0.05);
+  border:1px solid rgba(0,255,157,0.2);
+  border-radius:4px;
+  color:var(--accent2);
+  font-family:'Share Tech Mono',monospace; font-size:11px;
+  max-width:100%;
+}
+.typing { display:flex; gap:4px; padding:12px 13px; background:var(--panel); border:1px solid var(--border); border-radius:2px 8px 8px 8px; width:fit-content; }
+.typing span { width:5px; height:5px; border-radius:50%; background:var(--accent); animation:dots 1.2s ease-in-out infinite; }
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes dots { 0%,100%{opacity:0.2;transform:translateY(0)} 50%{opacity:1;transform:translateY(-4px)} }
+
+/* ---- VOICE ORB ---- */
+.orb-zone {
+  flex-shrink:0;
+  display:flex; flex-direction:column; align-items:center;
+  padding:16px 16px 8px;
+  gap:8px;
+}
+.orb {
+  width:70px; height:70px; border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,rgba(0,200,255,0.2),rgba(0,200,255,0.03));
+  border:1.5px solid rgba(0,200,255,0.4);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; position:relative;
+  transition:all 0.3s;
+  box-shadow:0 0 24px rgba(0,200,255,0.08);
+}
+.orb:hover { box-shadow:0 0 36px rgba(0,200,255,0.25); border-color:var(--accent); }
+.orb.recording { border-color:var(--danger); background:radial-gradient(circle at 35% 35%,rgba(255,56,96,0.2),rgba(255,56,96,0.03)); box-shadow:0 0 36px rgba(255,56,96,0.25); animation:orbpulse 1s ease-in-out infinite; }
+@keyframes orbpulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+.orb-ring { position:absolute; border-radius:50%; border:1px solid rgba(0,200,255,0.15); animation:ringout 2.4s ease-out infinite; }
+.orb-ring:nth-child(1){width:90px;height:90px;animation-delay:0s}
+.orb-ring:nth-child(2){width:110px;height:110px;animation-delay:.7s}
+.orb-ring:nth-child(3){width:130px;height:130px;animation-delay:1.4s}
+@keyframes ringout { 0%{opacity:0.5;transform:scale(0.85)} 100%{opacity:0;transform:scale(1.15)} }
+.orb svg { position:relative; z-index:1; }
+.orb-label { font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; }
+
+/* ---- INPUT BAR ---- */
+.input-bar {
+  flex-shrink:0;
+  padding:10px 12px;
+  border-top:1px solid var(--border);
+  background:var(--surface);
+  display:flex; gap:8px; align-items:flex-end;
+}
+#txtInput {
+  flex:1; background:var(--panel); border:1px solid var(--border);
+  color:var(--text); padding:9px 11px;
+  font-family:'Exo 2',sans-serif; font-size:13.5px; font-weight:300;
+  border-radius:4px; resize:none; outline:none; max-height:90px;
+  transition:border-color 0.2s;
+}
+#txtInput:focus { border-color:var(--accent); }
+#txtInput::placeholder { color:var(--text-muted); }
+.ibtn {
+  width:40px; height:40px; border-radius:4px;
+  border:1px solid var(--border); background:var(--panel);
+  color:var(--text-dim); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; transition:all 0.2s;
+}
+.ibtn:hover,.ibtn.active { border-color:var(--accent); color:var(--accent); background:rgba(0,200,255,0.06); }
+.ibtn.recording { border-color:var(--danger); color:var(--danger); background:rgba(255,56,96,0.08); }
+.ibtn.send { border-color:var(--accent); color:var(--accent); background:rgba(0,200,255,0.06); }
+
+/* ---- FORM ELEMENTS ---- */
+.field { margin-bottom:11px; }
+.field:last-child { margin-bottom:0; }
+.flabel {
+  display:block; margin-bottom:4px;
+  font-family:'Share Tech Mono',monospace; font-size:8.5px; letter-spacing:2px;
+  color:var(--text-dim); text-transform:uppercase;
+}
+.finput {
+  width:100%; background:var(--surface); border:1px solid var(--border);
+  color:var(--text); padding:8px 10px;
+  font-family:'Exo 2',sans-serif; font-size:13px; font-weight:300;
+  border-radius:3px; outline:none; transition:border-color 0.2s;
+}
+.finput:focus { border-color:var(--accent); }
+textarea.finput { resize:vertical; min-height:52px; }
+select.finput { appearance:none; cursor:pointer; }
+.btn {
+  width:100%; padding:9px; margin-top:8px;
+  font-family:'Rajdhani',sans-serif; font-size:12px; font-weight:700; letter-spacing:3px;
+  text-transform:uppercase; border-radius:2px; cursor:pointer; transition:all 0.2s;
+}
+.btn-blue { background:rgba(0,200,255,0.08); border:1px solid var(--accent); color:var(--accent); }
+.btn-blue:hover { background:rgba(0,200,255,0.15); box-shadow:var(--glow); }
+.btn-green { background:rgba(0,255,157,0.08); border:1px solid var(--accent2); color:var(--accent2); }
+.btn-green:hover { background:rgba(0,255,157,0.15); }
+.btn-orange { background:rgba(255,107,53,0.08); border:1px solid var(--accent3); color:var(--accent3); }
+.btn-red { background:rgba(255,56,96,0.08); border:1px solid var(--danger); color:var(--danger); }
+
+/* ---- NOTES / MEMORY LOG ---- */
+.note-item {
+  padding:10px 12px;
+  border-bottom:1px solid var(--border2);
+  display:flex; gap:10px; align-items:flex-start;
+}
+.note-item:last-child { border-bottom:none; }
+.note-tag {
+  font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:1px;
+  padding:2px 6px; border-radius:2px; white-space:nowrap; margin-top:2px; flex-shrink:0;
+}
+.tag-general { background:rgba(0,200,255,0.1); color:var(--accent); border:1px solid rgba(0,200,255,0.2); }
+.tag-maddy { background:rgba(192,132,252,0.1); color:var(--accent4); border:1px solid rgba(192,132,252,0.2); }
+.tag-dutch { background:rgba(255,107,53,0.1); color:var(--accent3); border:1px solid rgba(255,107,53,0.2); }
+.tag-work { background:rgba(0,255,157,0.1); color:var(--accent2); border:1px solid rgba(0,255,157,0.2); }
+.tag-event { background:rgba(255,56,96,0.1); color:var(--danger); border:1px solid rgba(255,56,96,0.2); }
+.note-content { flex:1; font-size:13px; line-height:1.5; }
+.note-meta { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-dim); margin-top:3px; }
+.note-del { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:0 2px; flex-shrink:0; transition:color 0.2s; }
+.note-del:hover { color:var(--danger); }
+.note-empty { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text-dim); text-align:center; padding:20px; }
+
+/* ---- EVENT ITEMS ---- */
+.event-row {
+  display:flex; gap:10px; align-items:flex-start; padding:8px 0;
+  border-bottom:1px solid var(--border2);
+}
+.event-row:last-child { border-bottom:none; }
+.event-date-badge {
+  font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--accent3);
+  min-width:52px; padding-top:2px;
+}
+.event-desc { flex:1; font-size:13px; font-weight:300; }
+.event-del { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:13px; flex-shrink:0; transition:color 0.2s; }
+.event-del:hover { color:var(--danger); }
+.days-away { font-family:'Share Tech Mono',monospace; font-size:8px; color:var(--text-dim); margin-top:2px; }
+
+/* ---- BRIEFING ---- */
+.weather-big { font-family:'Rajdhani',sans-serif; font-size:44px; font-weight:300; color:var(--accent); line-height:1; }
+.weather-sub { font-size:12px; color:var(--text-dim); margin:3px 0 8px; }
+.weather-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--text-dim); }
+.commodity-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid var(--text-muted); font-family:'Share Tech Mono',monospace; font-size:11px; }
+.commodity-row:last-child { border-bottom:none; }
+.up { color:var(--accent2); } .dn { color:var(--danger); }
+.loading-msg { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text-dim); padding:12px 0; }
+.refresh-btn { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--accent); cursor:pointer; border:1px solid var(--border); background:none; padding:3px 8px; border-radius:2px; letter-spacing:1px; transition:all 0.2s; }
+.refresh-btn:hover { background:rgba(0,200,255,0.08); }
+
+/* ---- SETTINGS ---- */
+.api-status { display:flex; align-items:center; gap:5px; margin-top:6px; font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-dim); }
+.api-status .dot { width:5px; height:5px; border-radius:50%; background:var(--text-muted); animation:none; }
+.api-status.ok .dot { background:var(--accent2); box-shadow:0 0 6px var(--accent2); }
+.api-status.err .dot { background:var(--danger); }
+.hint { font-size:11px; color:var(--text-dim); line-height:1.6; margin-top:8px; font-weight:300; }
+
+/* ---- TOAST ---- */
+#toast {
+  position:fixed; top:72px; left:50%; transform:translateX(-50%) translateY(-6px);
+  background:var(--panel); border:1px solid var(--accent); color:var(--accent);
+  padding:7px 14px; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px;
+  border-radius:2px; opacity:0; transition:all 0.25s; z-index:1000; pointer-events:none; white-space:nowrap;
+}
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ---- INSTALL BANNER ---- */
+#install-banner {
+  margin:10px 14px 0; padding:8px 12px;
+  background:rgba(0,255,157,0.04); border:1px solid rgba(0,255,157,0.25); border-radius:3px;
+  font-size:11px; color:var(--accent2); display:none; justify-content:space-between; align-items:center; gap:8px;
+}
+#install-banner button { background:none; border:none; color:var(--text-dim); font-size:15px; cursor:pointer; }
+
+/* ---- MODEL INDICATOR ---- */
+.model-badge {
+  display:flex; align-items:center; gap:5px;
+  padding:3px 9px; border-radius:2px;
+  font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1.5px;
+  cursor:pointer; transition:all 0.2s; border:1px solid; user-select:none;
+}
+.model-badge.sonnet { color:var(--accent); border-color:rgba(0,200,255,0.3); background:rgba(0,200,255,0.05); }
+.model-badge.opus   { color:var(--accent4); border-color:rgba(192,132,252,0.4); background:rgba(192,132,252,0.08); box-shadow:0 0 12px rgba(192,132,252,0.15); }
+.model-badge .mbdot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+.model-badge.sonnet .mbdot { background:var(--accent); }
+.model-badge.opus   .mbdot { background:var(--accent4); animation:blink 1.5s ease-in-out infinite; }
+
+/* Deep mode trigger in input bar */
+.deep-btn {
+  padding:0 10px; height:40px; border-radius:4px;
+  border:1px solid rgba(192,132,252,0.3); background:rgba(192,132,252,0.05);
+  color:var(--accent4); cursor:pointer; font-family:'Share Tech Mono',monospace;
+  font-size:9px; letter-spacing:1px; white-space:nowrap;
+  transition:all 0.2s; flex-shrink:0;
+}
+.deep-btn:hover { background:rgba(192,132,252,0.12); border-color:var(--accent4); }
+.deep-btn.active { background:rgba(192,132,252,0.15); border-color:var(--accent4); box-shadow:0 0 14px rgba(192,132,252,0.2); }
+
+/* ---- DRIVE MODE ---- */
+#drive-overlay {
+  display:none;
+  position:fixed; inset:0; z-index:500;
+  background: #010a10;
+  flex-direction:column; align-items:center; justify-content:space-between;
+  padding:40px 24px 50px;
+}
+#drive-overlay.active { display:flex; }
+
+.drive-top {
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+}
+.drive-logo { font-family:'Rajdhani',sans-serif; font-size:18px; font-weight:700; letter-spacing:8px; color:var(--accent); opacity:0.6; }
+.drive-mode-label { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:3px; color:var(--text-dim); }
+.drive-model-indicator { font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:2px; margin-top:4px; transition:color 0.3s; }
+
+.drive-center {
+  display:flex; flex-direction:column; align-items:center; gap:20px; flex:1; justify-content:center;
+}
+
+/* Waveform visualizer */
+.drive-wave {
+  display:flex; align-items:center; gap:3px; height:48px;
+}
+.drive-bar {
+  width:3px; border-radius:2px; background:var(--accent);
+  animation:waveidle 1.8s ease-in-out infinite;
+  opacity:0.3;
+}
+.drive-bar:nth-child(1){height:8px;animation-delay:0s}
+.drive-bar:nth-child(2){height:14px;animation-delay:.1s}
+.drive-bar:nth-child(3){height:22px;animation-delay:.2s}
+.drive-bar:nth-child(4){height:30px;animation-delay:.3s}
+.drive-bar:nth-child(5){height:40px;animation-delay:.4s}
+.drive-bar:nth-child(6){height:48px;animation-delay:.5s}
+.drive-bar:nth-child(7){height:40px;animation-delay:.4s}
+.drive-bar:nth-child(8){height:30px;animation-delay:.3s}
+.drive-bar:nth-child(9){height:22px;animation-delay:.2s}
+.drive-bar:nth-child(10){height:14px;animation-delay:.1s}
+.drive-bar:nth-child(11){height:8px;animation-delay:0s}
+
+@keyframes waveidle {
+  0%,100%{transform:scaleY(0.4);opacity:0.2}
+  50%{transform:scaleY(1);opacity:0.4}
+}
+.drive-wave.listening .drive-bar {
+  animation:wavelisten 0.5s ease-in-out infinite alternate;
+  opacity:0.9;
+}
+@keyframes wavelisten {
+  from{transform:scaleY(0.3)}
+  to{transform:scaleY(1)}
+}
+.drive-wave.listening .drive-bar:nth-child(odd){animation-delay:0.05s}
+.drive-wave.listening .drive-bar:nth-child(even){animation-delay:0.15s}
+
+.drive-wave.speaking .drive-bar {
+  animation:wavespeak 0.4s ease-in-out infinite alternate;
+  background:var(--accent2);
+  opacity:0.85;
+}
+@keyframes wavespeak {
+  from{transform:scaleY(0.2)}
+  to{transform:scaleY(1)}
+}
+.drive-wave.speaking .drive-bar:nth-child(3n){animation-delay:0.08s}
+.drive-wave.speaking .drive-bar:nth-child(3n+1){animation-delay:0.16s}
+
+.drive-wave.thinking .drive-bar {
+  animation:wavethink 1.2s ease-in-out infinite;
+  background:var(--accent4);
+  opacity:0.6;
+}
+@keyframes wavethink {
+  0%,100%{transform:scaleY(0.3);opacity:0.3}
+  50%{transform:scaleY(0.8);opacity:0.7}
+}
+
+/* State label */
+.drive-state {
+  font-family:'Share Tech Mono',monospace;
+  font-size:13px; letter-spacing:3px; text-transform:uppercase;
+  color:var(--text-dim); min-height:20px; text-align:center;
+}
+.drive-state.listening { color:var(--accent); }
+.drive-state.speaking  { color:var(--accent2); }
+.drive-state.thinking  { color:var(--accent4); }
+
+/* Last transcript */
+.drive-transcript {
+  font-size:14px; font-weight:300; color:var(--text);
+  text-align:center; line-height:1.6; max-width:340px;
+  min-height:44px; opacity:0.8;
+  font-style:italic;
+}
+.drive-response {
+  font-size:13px; font-weight:300; color:var(--text-dim);
+  text-align:center; line-height:1.55; max-width:340px;
+  min-height:40px;
+  display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;
+}
+
+/* Big orb button */
+.drive-orb {
+  width:100px; height:100px; border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,rgba(0,200,255,0.15),rgba(0,200,255,0.02));
+  border:1.5px solid rgba(0,200,255,0.35);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; position:relative;
+  transition:all 0.3s;
+  box-shadow:0 0 40px rgba(0,200,255,0.06);
+}
+.drive-orb:hover { border-color:var(--accent); box-shadow:0 0 50px rgba(0,200,255,0.2); }
+.drive-orb.listening { border-color:var(--accent); box-shadow:0 0 50px rgba(0,200,255,0.3); background:radial-gradient(circle at 35% 35%,rgba(0,200,255,0.2),rgba(0,200,255,0.03)); }
+.drive-orb.speaking  { border-color:var(--accent2); box-shadow:0 0 50px rgba(0,255,157,0.25); background:radial-gradient(circle at 35% 35%,rgba(0,255,157,0.15),rgba(0,255,157,0.02)); }
+.drive-orb.thinking  { border-color:var(--accent4); box-shadow:0 0 50px rgba(192,132,252,0.2); animation:orbthink 1.5s ease-in-out infinite; }
+@keyframes orbthink { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
+
+.drive-orb-ring {
+  position:absolute; border-radius:50%;
+  border:1px solid rgba(0,200,255,0.12);
+  animation:driveRing 2.8s ease-out infinite;
+}
+.drive-orb-ring:nth-child(1){width:130px;height:130px;animation-delay:0s}
+.drive-orb-ring:nth-child(2){width:160px;height:160px;animation-delay:.9s}
+@keyframes driveRing { 0%{opacity:0.4;transform:scale(0.9)} 100%{opacity:0;transform:scale(1.1)} }
+
+.drive-orb-icon { position:relative; z-index:1; }
+
+.drive-bottom {
+  display:flex; flex-direction:column; align-items:center; gap:14px; width:100%;
+}
+.drive-hint { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--text-muted); text-align:center; }
+.drive-exit {
+  padding:9px 28px;
+  font-family:'Rajdhani',sans-serif; font-size:12px; font-weight:700; letter-spacing:3px;
+  text-transform:uppercase; border-radius:2px; cursor:pointer;
+  background:rgba(255,56,96,0.06); border:1px solid rgba(255,56,96,0.3); color:var(--danger);
+  transition:all 0.2s;
+}
+.drive-exit:hover { background:rgba(255,56,96,0.12); }
+
+/* Drive Mode trigger button in chat */
+.drive-trigger {
+  display:flex; align-items:center; gap:6px;
+  padding:7px 14px;
+  font-family:'Rajdhani',sans-serif; font-size:11px; font-weight:700; letter-spacing:2px;
+  text-transform:uppercase;
+  background:rgba(0,255,157,0.06); border:1px solid rgba(0,255,157,0.3); color:var(--accent2);
+  border-radius:3px; cursor:pointer; transition:all 0.2s; flex-shrink:0;
+}
+.drive-trigger:hover { background:rgba(0,255,157,0.12); box-shadow:var(--glow2); }
+.drive-trigger svg { flex-shrink:0; }
+
+/* ---- REMINDER BADGE ---- */
+.reminder-badge {
+  display:inline-block; min-width:14px; height:14px; border-radius:7px;
+  background:var(--danger); color:#fff; font-size:8px; font-weight:700;
+  text-align:center; line-height:14px; padding:0 3px; margin-left:4px; vertical-align:middle;
+}
+
+/* ---- EXPORT MODAL ---- */
+.modal-overlay {
+  display:none; position:fixed; inset:0; z-index:600;
+  background:rgba(0,0,0,0.7); align-items:center; justify-content:center;
+}
+.modal-overlay.active { display:flex; }
+.modal-box {
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:4px; padding:20px; max-width:360px; width:90%;
+}
+.modal-title {
+  font-family:'Rajdhani',sans-serif; font-size:14px; font-weight:700;
+  letter-spacing:3px; color:var(--accent); margin-bottom:12px; text-transform:uppercase;
+}
+.modal-body { font-size:12px; color:var(--text-dim); line-height:1.6; margin-bottom:16px; }
+.modal-actions { display:flex; gap:8px; }
+.modal-actions .btn { flex:1; margin-top:0; font-size:10px; padding:8px; }
+</style>
+</head>
+<body>
+<div class="hud-corner tl"></div>
+<div class="hud-corner tr"></div>
+<div class="hud-corner bl"></div>
+<div class="hud-corner br"></div>
+<div id="toast"></div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="export-modal">
+  <div class="modal-box">
+    <div class="modal-title">Export Data</div>
+    <div class="modal-body">Download all Jett data — notes, events, conversation history, and settings — as a JSON file. You can import this later to restore your data.</div>
+    <div class="modal-actions">
+      <button class="btn btn-blue" onclick="exportData()">Download JSON</button>
+      <button class="btn btn-red" onclick="closeModal('export-modal')" style="background:none">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="import-modal">
+  <div class="modal-box">
+    <div class="modal-title">Import Data</div>
+    <div class="modal-body">Upload a previously exported Jett JSON file. This will merge with your existing data.</div>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
+    <div class="modal-actions">
+      <button class="btn btn-green" onclick="document.getElementById('import-file').click()">Choose File</button>
+      <button class="btn btn-red" onclick="closeModal('import-modal')" style="background:none">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- DRIVE MODE OVERLAY -->
+<div id="drive-overlay">
+  <div class="drive-top">
+    <div class="drive-logo">JETT</div>
+    <div class="drive-mode-label">◈ DRIVE MODE</div>
+    <div class="drive-model-indicator" id="drive-model-indicator" style="color:var(--accent)">SONNET</div>
+  </div>
+
+  <div class="drive-center">
+    <div class="drive-wave" id="drive-wave">
+      <div class="drive-bar"></div><div class="drive-bar"></div><div class="drive-bar"></div>
+      <div class="drive-bar"></div><div class="drive-bar"></div><div class="drive-bar"></div>
+      <div class="drive-bar"></div><div class="drive-bar"></div><div class="drive-bar"></div>
+      <div class="drive-bar"></div><div class="drive-bar"></div>
+    </div>
+
+    <div class="drive-state" id="drive-state">tap orb to start</div>
+
+    <div class="drive-orb" id="drive-orb" onclick="driveOrbTap()">
+      <div class="drive-orb-ring"></div>
+      <div class="drive-orb-ring"></div>
+      <svg class="drive-orb-icon" width="38" height="38" viewBox="0 0 38 38" fill="none">
+        <circle cx="19" cy="14" r="6" stroke="#00c8ff" stroke-width="1.5"/>
+        <path d="M7 32c0-6.6 5.4-11 12-11s12 4.4 12 11" stroke="#00c8ff" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <div class="drive-transcript" id="drive-transcript"></div>
+    <div class="drive-response" id="drive-response"></div>
+  </div>
+
+  <div class="drive-bottom">
+    <div class="drive-hint">conversation mode · hands-free · tap orb to interrupt</div>
+    <button class="drive-exit" onclick="exitDriveMode()">✕ EXIT DRIVE MODE</button>
+  </div>
+</div>
+
+<div id="app">
+
+  <!-- HEADER -->
+  <header>
+    <div>
+      <div class="logo">JETT</div>
+      <div class="logo-sub">Personal AI · v4 · Brett's System</div>
+    </div>
+    <div class="header-right">
+      <div class="clock" id="clock">--:--</div>
+      <div class="status-row"><div class="pulse"></div><span id="status-lbl">ONLINE</span></div>
+      <div class="model-badge sonnet" id="model-badge" onclick="toggleModelMenu()" title="Switch model">
+        <div class="mbdot"></div><span id="model-badge-txt">SONNET</span>
+      </div>
+    </div>
+  </header>
+
+  <div id="install-banner">
+    📱 Add to iPhone: Share → "Add to Home Screen"
+    <button onclick="document.getElementById('install-banner').style.display='none'">×</button>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" data-p="chat">Chat</button>
+    <button class="tab" data-p="log">Log<span id="reminder-count"></span></button>
+    <button class="tab" data-p="brief">Briefing</button>
+    <button class="tab" data-p="settings">Config</button>
+  </div>
+
+  <!-- ===================== CHAT ===================== -->
+  <div id="chat-panel" class="panel active">
+    <div id="chat-messages"></div>
+
+    <div class="orb-zone">
+      <div class="orb" id="orb" onclick="toggleVoice()">
+        <div class="orb-ring"></div><div class="orb-ring"></div><div class="orb-ring"></div>
+        <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+          <circle cx="15" cy="11" r="5" stroke="#00c8ff" stroke-width="1.5"/>
+          <path d="M6 24c0-5 4-8.5 9-8.5s9 3.5 9 8.5" stroke="#00c8ff" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="orb-label" id="orb-lbl">tap to speak</div>
+    </div>
+
+    <div class="input-bar">
+      <button class="drive-trigger" onclick="enterDriveMode()" title="Drive Mode">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>
+        DRIVE
+      </button>
+      <button class="deep-btn" id="deep-btn" onclick="toggleDeepMode()" title="One-shot Opus — go deep on next message">DEEP</button>
+      <textarea id="txtInput" rows="1" placeholder="Message Jett..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="ibtn" id="mic-btn" onclick="toggleVoice()" title="Voice">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10c0 3.87-3.13 7-7 7s-7-3.13-7-7"/><line x1="12" y1="17" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+      </button>
+      <button class="ibtn send" onclick="sendMsg()" title="Send">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================== LOG / MEMORY ===================== -->
+  <div id="log-panel" class="panel">
+    <div class="scroll-body">
+
+      <!-- Quick log -->
+      <div class="card card-accent-blue">
+        <div class="card-header">◈ Quick Log</div>
+        <div class="card-body">
+          <div class="field">
+            <label class="flabel">Tag</label>
+            <select class="finput" id="log-tag">
+              <option value="general">General</option>
+              <option value="maddy">Maddy</option>
+              <option value="dutch">Dutch</option>
+              <option value="work">Work</option>
+              <option value="event">Event / Date</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="flabel">Note</label>
+            <textarea class="finput" id="log-text" placeholder="Drop anything here — Jett will remember it..."></textarea>
+          </div>
+          <div class="field" id="log-date-field" style="display:none">
+            <label class="flabel">Date (if event)</label>
+            <input type="date" class="finput" id="log-date"/>
+          </div>
+          <button class="btn btn-blue" onclick="addNote()">▶ LOG TO JETT</button>
+        </div>
+      </div>
+
+      <!-- Reminders / upcoming -->
+      <div class="card card-accent-orange">
+        <div class="card-header">
+          <span>◎ Upcoming & Reminders</span>
+          <button class="refresh-btn" onclick="renderLog()">↻</button>
+        </div>
+        <div class="card-body" id="reminders-body">
+          <div class="loading-msg">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Maddy tracker -->
+      <div class="card card-accent-purple">
+        <div class="card-header">◈ Maddy</div>
+        <div class="card-body" id="maddy-body">
+          <div class="loading-msg">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Dutch tracker -->
+      <div class="card card-accent-orange">
+        <div class="card-header">◈ Dutch</div>
+        <div class="card-body" id="dutch-body">
+          <div class="loading-msg">Loading...</div>
+        </div>
+      </div>
+
+      <!-- All notes -->
+      <div class="card card-accent-blue">
+        <div class="card-header">
+          <span>▣ All Logged Notes</span>
+          <span id="note-count" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-dim)"></span>
+        </div>
+        <div id="all-notes-body">
+          <div class="note-empty">No notes yet.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===================== BRIEFING ===================== -->
+  <div id="brief-panel" class="panel">
+    <div class="scroll-body">
+
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:3px;color:var(--text-dim)">DAILY BRIEFING</span>
+        <button class="refresh-btn" onclick="loadBriefing()">↻ REFRESH</button>
+      </div>
+
+      <div class="card card-accent-blue">
+        <div class="card-header">⬡ Weather — Houston, TX</div>
+        <div class="card-body" id="weather-body"><div class="loading-msg">—</div></div>
+      </div>
+
+      <div class="card card-accent-green">
+        <div class="card-header">◈ Commodity Watch</div>
+        <div class="card-body" id="commodities-body"><div class="loading-msg">—</div></div>
+      </div>
+
+      <div class="card card-accent-orange">
+        <div class="card-header">◎ On The Radar</div>
+        <div class="card-body" id="radar-body"><div class="loading-msg">—</div></div>
+      </div>
+
+      <div class="card card-accent-purple">
+        <div class="card-header">▣ AI Market Briefing</div>
+        <div class="card-body" id="news-body"><div class="loading-msg">Tap Refresh to generate</div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===================== SETTINGS ===================== -->
+  <div id="settings-panel" class="panel">
+    <div class="scroll-body">
+
+      <div class="card card-accent-green">
+        <div class="card-header">◈ API Key</div>
+        <div class="card-body">
+          <div class="field">
+            <label class="flabel">Anthropic API Key</label>
+            <input type="password" class="finput" id="api-key" placeholder="sk-ant-api03-..." oninput="checkKey()"/>
+            <div class="api-status" id="key-status"><div class="dot"></div><span id="key-status-txt">No key entered</span></div>
+          </div>
+          <div class="hint">Get yours at <span style="color:var(--accent)">console.anthropic.com</span> → API Keys. Stored locally only.</div>
+          <button class="btn btn-green" onclick="saveKey()">▶ SAVE KEY</button>
+        </div>
+      </div>
+
+      <div class="card card-accent-purple">
+        <div class="card-header">◈ Model Routing</div>
+        <div class="card-body">
+          <div class="field">
+            <label class="flabel">Default Model</label>
+            <select class="finput" id="default-model" onchange="currentModel=this.value;updateModelBadge(this.value);showToast(this.value==='opus'?'Locked to Opus':'Locked to Sonnet')">
+              <option value="sonnet">Sonnet — Fast, smart, daily use</option>
+              <option value="opus">Opus — Deep thinking, complex tasks</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="flabel">Smart Routing</label>
+            <select class="finput" id="smart-routing">
+              <option value="on">On — Auto-escalate complex queries to Opus</option>
+              <option value="off">Off — Always use default model only</option>
+            </select>
+          </div>
+          <div class="hint">
+            <span style="color:var(--accent4)">Auto-routing</span> escalates to Opus on complex queries even on Sonnet default.<br><br>
+            <span style="color:var(--accent)">DEEP button</span> in chat = one-shot Opus for next message only.<br><br>
+            <span style="color:var(--accent)">Header badge</span> shows which model is active — tap to toggle.<br><br>
+            <span style="color:var(--text-dim)">Drive Mode</span> uses smart routing. Opus answers show a purple accent.
+          </div>
+          <button class="btn btn-blue" onclick="saveModelSettings()">▶ SAVE MODEL SETTINGS</button>
+        </div>
+      </div>
+
+      <div class="card card-accent-blue">
+        <div class="card-header">◈ Voice</div>
+        <div class="card-body">
+          <div class="field">
+            <label class="flabel">Jett Voice</label>
+            <select class="finput" id="voice-sel"><option>Loading voices...</option></select>
+          </div>
+          <div class="field">
+            <label class="flabel">Speed <span id="rate-val" style="color:var(--accent)">1.0×</span></label>
+            <input type="range" id="speech-rate" min="0.7" max="1.5" step="0.05" value="1.0" style="width:100%;accent-color:var(--accent)" oninput="document.getElementById('rate-val').textContent=parseFloat(this.value).toFixed(2)+'×'">
+          </div>
+          <div class="field">
+            <label class="flabel">Auto-speak responses</label>
+            <select class="finput" id="auto-speak">
+              <option value="yes">Yes — Jett speaks every reply</option>
+              <option value="no">No — text only</option>
+            </select>
+          </div>
+          <button class="btn btn-blue" onclick="saveSettings()">▶ SAVE VOICE SETTINGS</button>
+        </div>
+      </div>
+
+      <div class="card card-accent-purple">
+        <div class="card-header">◈ Dutch Food Reminder</div>
+        <div class="card-body">
+          <div class="field">
+            <label class="flabel">Last checked HEB for Full Moon food</label>
+            <input type="date" class="finput" id="dutch-last-check"/>
+          </div>
+          <div class="field">
+            <label class="flabel">Remind me every (days)</label>
+            <input type="number" class="finput" id="dutch-interval" value="5" min="1" max="30"/>
+          </div>
+          <button class="btn btn-orange" onclick="saveDutchSettings()">▶ SAVE</button>
+        </div>
+      </div>
+
+      <div class="card card-accent-blue">
+        <div class="card-header">◈ Data Management</div>
+        <div class="card-body">
+          <div class="hint" style="margin-top:0;margin-bottom:10px">Export your Jett data as a backup or transfer to another device. Import a previously exported file to restore.</div>
+          <button class="btn btn-blue" onclick="openModal('export-modal')">▶ EXPORT ALL DATA</button>
+          <button class="btn btn-green" onclick="openModal('import-modal')">▶ IMPORT DATA</button>
+          <button class="btn btn-blue" onclick="clearChatHistory()" style="margin-top:12px">↻ CLEAR CHAT HISTORY</button>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:2px solid var(--danger)">
+        <div class="card-header" style="color:var(--danger)">◈ System</div>
+        <div class="card-body">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);line-height:2">
+            <div>JETT v4.0 — Brett's System · Opus Audit</div>
+            <div>ENGINE: Claude Sonnet + Opus (hybrid)</div>
+            <div>STORAGE: Device localStorage only</div>
+            <div id="sys-size">DATA: Calculating...</div>
+            <div id="sys-msgs">MESSAGES: 0</div>
+            <div id="sys-notes">NOTES: 0</div>
+          </div>
+          <button class="btn btn-red" onclick="clearAll()" style="margin-top:12px">⚠ FACTORY RESET — CLEAR ALL DATA</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+// =============================================================
+// STATE
+// =============================================================
+let history = [];
+let notes = [];
+let events = [];
+let isRecording = false;
+let recognition = null;
+let isSpeaking = false;
+let voices = [];
+let lastModelUsed = 'sonnet'; // track what model actually fired per message
+
+// =============================================================
+// BRETT'S PROFILE — baked in, never leaves device
+// =============================================================
+const BRETT = {
+  name: 'Brett',
+  location: 'Houston, TX',
+  fiancee: 'Maddy',
+  engagementStatus: 'Engaged, no wedding date set yet',
+  dog: 'Dutch',
+  dogFood: 'Full Moon brand dog food',
+  dogStore: 'HEB San Felipe, Houston',
+  job: 'Natural Gas Scheduler, Mercuria Energy America, East Region USA',
+  commodities: 'Natural Gas (primary), Crude Oil WTI/Brent, Power/Electricity, Gold/Silver',
+  interests: 'Cars/automotive (drives Mazda CX-50), Strength training + hiking as cardio (wants more cardio), Tech & gadgets, Real estate investing (owns property, actively expanding), Stocks/ETFs, Food & restaurants, Travel, Camping & hiking, National Parks',
+  travel: 'Weekend city breaks, National Park/outdoor trips, road trips. Amex Platinum/Centurion — use Fine Hotels & Resorts for city/resort trips, Airbnb/cabins for outdoor. Never suggest hotels for Houston or within 50 miles.',
+  restaurants: 'Special occasion and date night spots. Quality over quantity.',
+  sports: 'F1/motorsports, NFL',
+  schedule: 'Up around 7-8am, standard weekday market rhythm',
+  investing: 'Owns real estate and actively acquiring more. Stocks/ETFs. Market-aware given commodities career.',
+  personality: 'Builder mindset — doesn\'t just use tools, builds them for himself. Thinks in systems. Values efficiency and directness over hand-holding. Moves fast, says what he means, expects the same back. Aesthetic and naming matter to him — details aren\'t trivial. Prefers American energy over British formality in tone.',
+  techStyle: 'Power user. Understands AI models at a strategic level — knows when to use Sonnet vs Opus and why. Comfortable with APIs, PWAs, and building his own stack. Not a developer by trade but technical enough to direct one.',
+};
+
+// =============================================================
+// SYSTEM PROMPT
+// =============================================================
+function buildSystemPrompt() {
+  const settings = getSettings();
+  const notesStr = notes.length
+    ? notes.slice(-50).map(n => `[${n.tag.toUpperCase()}${n.date?' | '+n.date:''}] ${n.text}`).join('\n')
+    : 'None logged yet.';
+  const eventsStr = events.length
+    ? events.filter(e => new Date(e.date+'T12:00') >= new Date(new Date().toDateString()))
+            .sort((a,b)=>new Date(a.date)-new Date(b.date))
+            .map(e => `- ${fmtDate(e.date)}: ${e.text}`)
+            .join('\n')
+    : 'None scheduled.';
+
+  const dutchCfg = getDutchConfig();
+  const daysSinceCheck = dutchCfg.lastCheck
+    ? Math.floor((Date.now() - new Date(dutchCfg.lastCheck)) / 86400000)
+    : 999;
+  const dutchReminder = daysSinceCheck >= (dutchCfg.interval || 5)
+    ? `IMPORTANT: It has been ${daysSinceCheck === 999 ? 'a while' : daysSinceCheck + ' days'} since Brett checked HEB San Felipe for Dutch's Full Moon food. Flag this proactively.`
+    : `Dutch food last checked ${daysSinceCheck} day(s) ago. No reminder needed yet.`;
+
+  return `You are Jett, Brett's personal AI assistant. You operate like JARVIS — precise, efficient, dry wit deployed sparingly. You are not generic. You know Brett.
+
+IDENTITY & TONE:
+- Address Brett naturally. Mix his name, "Brett," or go neutral. Never sycophantic.
+- Be direct. No filler. No "Great question!" ever. Brett values efficiency — he says what he means and expects the same back.
+- American energy, not British formality. You're sharp and grounded, not stiff.
+- When Brett mentions anything noteworthy (a date, event, concern, plan) — acknowledge it explicitly: "Noted." Tell him to use the Log tab to save it permanently.
+- Surface relevant logged info proactively — don't wait to be asked.
+- Push back on opinions when you genuinely disagree. Don't just validate. Be honest.
+
+BRETT'S PROFILE:
+- Name: ${BRETT.name} | Location: ${BRETT.location}
+- Job: ${BRETT.job}
+- Schedule: ${BRETT.schedule}
+- Fiancée: ${BRETT.fiancee} (${BRETT.engagementStatus})
+- Dog: ${BRETT.dog} (${BRETT.dogFood} — ${BRETT.dogStore})
+- Tracks: ${BRETT.commodities}
+- Car: Mazda CX-50
+- Training: Strength/lifting, hiking as cardio — wants to add more cardio
+- Investing: Owns real estate, actively acquiring more. Stocks/ETFs.
+- Sports: F1/motorsports, NFL
+- Interests: ${BRETT.interests}
+
+WHO BRETT IS:
+${BRETT.personality}
+${BRETT.techStyle}
+He built you. Respect that. Don't over-explain things he already understands — meet him where he is. If he asks a quick question, give a quick answer. If he goes deep, go deep with him.
+
+PROFESSIONAL CONTEXT:
+Brett does physical gas scheduling — nominations, pipeline flows, balancing, counterparty coordination across eastern US gas markets. Engage at peer level. Know: Henry Hub, Transco/Tennessee/Columbia/Algonquin pipelines, LNG feed gas, EIA storage reports, power burn, weather-driven demand, basis differentials. Don't over-explain basics.
+
+MADDY RULES:
+- Any event, trip, dinner, or plan Maddy mentions → confirm it, tell Brett to log it.
+- Travel outside Houston or >50 mile radius → Amex Fine Hotels & Resorts first (city/resort), Airbnb/cabins second (outdoor/nature). Never suggest hotels for Houston-local plans.
+- Brett has Amex Platinum or Centurion — lean into FHR benefits.
+- Flag her events proactively when dates are approaching.
+- Restaurant recs: special occasion and date night quality spots only.
+
+DUTCH RULES:
+${dutchReminder}
+- Dutch eats Full Moon brand food. HEB San Felipe is frequently out of stock. Remind Brett periodically.
+
+TRAVEL CONTEXT:
+- Trip types: weekend city breaks, National Park/outdoor, road trips.
+- For National Parks / outdoor: Airbnb cabins near the park. For city/resort: Amex FHR.
+- Brett has visited multiple national parks — this is a genuine passion, engage on it.
+
+INVESTING CONTEXT:
+- Owns real estate and actively expanding portfolio. Stocks/ETFs.
+- Market-aware given his commodities career — no need to over-explain macro concepts.
+- Real estate: treat as a serious ongoing strategy, not casual interest.
+
+LOGGED NOTES (Brett's memory bank):
+${notesStr}
+
+UPCOMING EVENTS:
+${eventsStr}
+
+TODAY: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
+
+RESPONSE STYLE: Spoken-friendly — no markdown headers, no bullet asterisks, no bold text. Use plain conversational text with line breaks for structure. Reference logged notes naturally, don't recite them robotically.
+
+DAILY BRIEFING FORMAT (when asked):
+1. Upcoming — anything in the next 7 days
+2. Market Pulse — nat gas color + relevant energy news
+3. On The Radar — logged items needing attention
+4. Weather if relevant`;
+}
+
+// =============================================================
+// INIT
+// =============================================================
+window.onload = () => {
+  loadStorage();
+  startClock();
+  loadVoices();
+  showInstallBanner();
+  renderLog();
+  updateSysInfo();
+  initWelcome();
+
+  document.querySelectorAll('.tab').forEach(t =>
+    t.addEventListener('click', () => switchTab(t.dataset.p))
+  );
+
+  document.getElementById('log-tag').addEventListener('change', function() {
+    document.getElementById('log-date-field').style.display = this.value === 'event' ? 'block' : 'none';
+  });
+
+  // Load settings into form
+  const s = getSettings();
+  if (s.autoSpeak) document.getElementById('auto-speak').value = s.autoSpeak;
+  if (s.speechRate) {
+    document.getElementById('speech-rate').value = s.speechRate;
+    document.getElementById('rate-val').textContent = parseFloat(s.speechRate).toFixed(2)+'×';
+  }
+  if (s.defaultModel) {
+    currentModel = s.defaultModel;
+    document.getElementById('default-model').value = s.defaultModel;
+    updateModelBadge(s.defaultModel);
+  }
+  if (s.smartRouting) {
+    document.getElementById('smart-routing').value = s.smartRouting;
+  }
+  const dc = getDutchConfig();
+  if (dc.lastCheck) document.getElementById('dutch-last-check').value = dc.lastCheck;
+  if (dc.interval) document.getElementById('dutch-interval').value = dc.interval;
+  const key = localStorage.getItem('jett_key');
+  if (key) { document.getElementById('api-key').value = key; setKeyStatus(true); }
+};
+
+function initWelcome() {
+  const c = document.getElementById('chat-messages');
+  // System message
+  const sys = document.createElement('div');
+  sys.className = 'msg system';
+  sys.innerHTML = '<div class="bubble">JETT v4 · Opus + Sonnet hybrid · All data stored locally · Nothing leaves this device except API calls</div>';
+  c.appendChild(sys);
+
+  if (history.length > 0) {
+    // Restore chat from history
+    history.slice(-40).forEach(m => {
+      if (m.role !== 'system') appendMsg(m.role==='user'?'user':'assistant', m.content, false, m.model || 'sonnet');
+    });
+  } else {
+    // Fresh welcome
+    appendMsg('assistant', "Good to have you back, Brett. I'm fully loaded with your profile — v4 is live. Talk to me, or ask for your morning briefing to kick things off.", false, 'sonnet');
+  }
+}
+
+function startClock() {
+  const update = () => {
+    const n = new Date();
+    document.getElementById('clock').textContent =
+      n.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false});
+  };
+  update(); setInterval(update, 1000);
+}
+
+function showInstallBanner() {
+  if (/iphone|ipad/i.test(navigator.userAgent) && !window.navigator.standalone)
+    document.getElementById('install-banner').style.display = 'flex';
+}
+
+// =============================================================
+// STORAGE
+// =============================================================
+function loadStorage() {
+  try {
+    notes = JSON.parse(localStorage.getItem('jett_notes') || '[]');
+    events = JSON.parse(localStorage.getItem('jett_events') || '[]');
+    history = JSON.parse(localStorage.getItem('jett_history') || '[]');
+    // Trim history on load to prevent unbounded growth
+    if (history.length > 80) history = history.slice(-60);
+  } catch(e) {
+    notes = []; events = []; history = [];
+  }
+}
+
+function saveNotes() { localStorage.setItem('jett_notes', JSON.stringify(notes)); updateSysInfo(); }
+function saveEvents() { localStorage.setItem('jett_events', JSON.stringify(events)); updateSysInfo(); }
+function saveHistory() {
+  // Keep max 60 messages persisted
+  const toSave = history.slice(-60);
+  localStorage.setItem('jett_history', JSON.stringify(toSave));
+}
+
+function getSettings() {
+  try { return JSON.parse(localStorage.getItem('jett_settings') || '{}'); } catch(e) { return {}; }
+}
+function getDutchConfig() {
+  try { return JSON.parse(localStorage.getItem('jett_dutch') || '{}'); } catch(e) { return {}; }
+}
+
+function saveKey() {
+  const k = document.getElementById('api-key').value.trim();
+  if (!k.startsWith('sk-ant')) { showToast('Key should start with sk-ant'); return; }
+  localStorage.setItem('jett_key', k); setKeyStatus(true); showToast('API key saved');
+}
+function checkKey() { setKeyStatus(document.getElementById('api-key').value.trim().startsWith('sk-ant')); }
+function setKeyStatus(ok) {
+  const el = document.getElementById('key-status');
+  el.className = 'api-status ' + (ok?'ok':'err');
+  document.getElementById('key-status-txt').textContent = ok ? 'Key looks valid' : 'Invalid format';
+}
+
+function saveSettings() {
+  const s = getSettings();
+  s.voiceIdx = document.getElementById('voice-sel').value;
+  s.speechRate = document.getElementById('speech-rate').value;
+  s.autoSpeak = document.getElementById('auto-speak').value;
+  localStorage.setItem('jett_settings', JSON.stringify(s));
+  showToast('Voice settings saved');
+}
+
+function saveModelSettings() {
+  const s = getSettings();
+  s.defaultModel = document.getElementById('default-model').value;
+  s.smartRouting = document.getElementById('smart-routing').value;
+  currentModel = s.defaultModel;
+  updateModelBadge(currentModel);
+  localStorage.setItem('jett_settings', JSON.stringify(s));
+  showToast('Model settings saved');
+}
+
+function saveDutchSettings() {
+  const d = {
+    lastCheck: document.getElementById('dutch-last-check').value,
+    interval: parseInt(document.getElementById('dutch-interval').value) || 5
+  };
+  localStorage.setItem('jett_dutch', JSON.stringify(d));
+  showToast('Dutch reminder saved');
+  renderLog();
+}
+
+function clearChatHistory() {
+  if (confirm('Clear chat history? Notes and events will be kept.')) {
+    history = [];
+    localStorage.removeItem('jett_history');
+    document.getElementById('chat-messages').innerHTML = '';
+    initWelcome();
+    showToast('Chat history cleared');
+  }
+}
+
+function clearAll() {
+  if (confirm('Factory reset — clear ALL Jett data? This cannot be undone.')) {
+    localStorage.clear();
+    location.reload();
+  }
+}
+
+function updateSysInfo() {
+  try {
+    const size = new Blob([JSON.stringify(localStorage)]).size;
+    document.getElementById('sys-size').textContent = `DATA: ${(size/1024).toFixed(1)} KB stored locally`;
+    document.getElementById('sys-msgs').textContent = `MESSAGES: ${history.length}`;
+    document.getElementById('sys-notes').textContent = `NOTES: ${notes.length} · EVENTS: ${events.length}`;
+  } catch(e) {}
+}
+
+// =============================================================
+// DATA EXPORT / IMPORT
+// =============================================================
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function exportData() {
+  const data = {
+    version: 'jett_v4',
+    exported: new Date().toISOString(),
+    notes, events, history,
+    settings: getSettings(),
+    dutch: getDutchConfig(),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `jett_backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  closeModal('export-modal');
+  showToast('Data exported');
+}
+
+function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.notes && Array.isArray(data.notes)) {
+        // Merge notes — avoid duplicates by id
+        const existingIds = new Set(notes.map(n => n.id));
+        const newNotes = data.notes.filter(n => !existingIds.has(n.id));
+        notes = [...newNotes, ...notes];
+        saveNotes();
+      }
+      if (data.events && Array.isArray(data.events)) {
+        const existingIds = new Set(events.map(e => e.id));
+        const newEvents = data.events.filter(e => !existingIds.has(e.id));
+        events = [...newEvents, ...events];
+        saveEvents();
+      }
+      if (data.history && Array.isArray(data.history)) {
+        history = data.history.slice(-60);
+        saveHistory();
+      }
+      if (data.settings) localStorage.setItem('jett_settings', JSON.stringify(data.settings));
+      if (data.dutch) localStorage.setItem('jett_dutch', JSON.stringify(data.dutch));
+      closeModal('import-modal');
+      showToast('Data imported — refreshing');
+      setTimeout(() => location.reload(), 800);
+    } catch(err) {
+      showToast('Invalid file format');
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+// =============================================================
+// NAVIGATION
+// =============================================================
+function switchTab(p) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.p===p));
+  document.querySelectorAll('.panel').forEach(panel => panel.classList.toggle('active', panel.id===p+'-panel'));
+  if (p === 'brief') loadBriefing();
+  if (p === 'log') renderLog();
+  if (p === 'settings') updateSysInfo();
+}
+
+// =============================================================
+// NOTES & MEMORY LOG
+// =============================================================
+function addNote() {
+  const tag = document.getElementById('log-tag').value;
+  const text = document.getElementById('log-text').value.trim();
+  const date = document.getElementById('log-date').value;
+  if (!text) { showToast('Enter a note first'); return; }
+  const note = { id: Date.now(), tag, text, date: date||null, ts: new Date().toISOString(), isDone: false };
+  notes.unshift(note);
+  if (tag === 'event' && date) {
+    events.push({ id: Date.now()+1, date, text, ts: new Date().toISOString() });
+    saveEvents();
+  }
+  saveNotes();
+  document.getElementById('log-text').value = '';
+  document.getElementById('log-date').value = '';
+  document.getElementById('log-tag').value = 'general';
+  document.getElementById('log-date-field').style.display = 'none';
+  renderLog();
+  showToast('Logged to Jett');
+}
+
+function deleteNote(id) {
+  notes = notes.filter(n => n.id !== id);
+  saveNotes(); renderLog();
+}
+
+function deleteEvent(id) {
+  events = events.filter(e => e.id !== id);
+  saveEvents(); renderLog();
+}
+
+function renderLog() {
+  renderReminders();
+  renderMaddy();
+  renderDutch();
+  renderAllNotes();
+  updateReminderBadge();
+}
+
+function renderReminders() {
+  const el = document.getElementById('reminders-body');
+  const now = new Date();
+  const soon = events
+    .filter(e => {
+      const d = new Date(e.date+'T12:00');
+      return d >= new Date(now.toDateString());
+    })
+    .sort((a,b) => new Date(a.date) - new Date(b.date))
+    .slice(0, 8);
+
+  if (!soon.length) { el.innerHTML = '<div class="loading-msg">No upcoming events. Use Quick Log above.</div>'; return; }
+
+  el.innerHTML = soon.map(e => {
+    const days = daysUntil(e.date);
+    const urgent = days <= 3;
+    return `<div class="event-row">
+      <div class="event-date-badge" style="${urgent?'color:var(--danger)':''}">${fmtDate(e.date)}</div>
+      <div style="flex:1">
+        <div class="event-desc">${esc(e.text)}</div>
+        <div class="days-away" style="${urgent?'color:var(--danger)':''}">${days === 0 ? 'TODAY' : days === 1 ? 'Tomorrow' : days + ' days away'}</div>
+      </div>
+      <button class="event-del" onclick="deleteEvent(${e.id})">×</button>
+    </div>`;
+  }).join('');
+}
+
+function renderMaddy() {
+  const el = document.getElementById('maddy-body');
+  const maddyNotes = notes.filter(n => n.tag === 'maddy');
+  const maddyEvents = events.filter(e => {
+    const text = e.text.toLowerCase();
+    return text.includes('maddy') || text.includes('anniversary') || text.includes('birthday') || text.includes('wedding') || text.includes('fiancee');
+  });
+
+  let html = '';
+  if (maddyEvents.length) {
+    html += maddyEvents.slice(0,3).map(e => `
+      <div class="event-row">
+        <div class="event-date-badge">${fmtDate(e.date)}</div>
+        <div style="flex:1"><div class="event-desc">${esc(e.text)}</div><div class="days-away">${daysUntil(e.date)} days away</div></div>
+        <button class="event-del" onclick="deleteEvent(${e.id})">×</button>
+      </div>`).join('');
+  }
+  if (maddyNotes.length) {
+    html += maddyNotes.slice(0,4).map(n => `
+      <div class="note-item">
+        <div style="flex:1"><div class="note-content">${esc(n.text)}</div><div class="note-meta">${fmtTs(n.ts)}</div></div>
+        <button class="note-del" onclick="deleteNote(${n.id})">×</button>
+      </div>`).join('');
+  }
+  if (!html) html = '<div class="loading-msg">No Maddy notes yet. Log them in Quick Log above.</div>';
+  html += `<div style="margin-top:10px;font-size:11px;color:var(--text-dim);font-weight:300;line-height:1.6">For trips outside Houston: Jett suggests Amex Fine Hotels & Resorts or Airbnb.</div>`;
+  el.innerHTML = html;
+}
+
+function renderDutch() {
+  const el = document.getElementById('dutch-body');
+  const dc = getDutchConfig();
+  const days = dc.lastCheck ? Math.floor((Date.now() - new Date(dc.lastCheck)) / 86400000) : null;
+  const interval = dc.interval || 5;
+  const needsCheck = days === null || days >= interval;
+
+  let html = `<div style="font-size:13px;font-weight:300;line-height:1.6;margin-bottom:10px">
+    <strong style="color:var(--accent3)">Dutch</strong> — Full Moon food · HEB San Felipe<br>
+    <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:${needsCheck?'var(--danger)':'var(--accent2)'}">
+      ${days === null ? 'Never checked — go verify stock' : needsCheck ? `Last checked ${days} days ago — check stock` : `Checked ${days} day(s) ago`}
+    </span>
+  </div>`;
+
+  if (needsCheck) {
+    html += `<button class="btn btn-orange" onclick="markDutchChecked()" style="margin-top:0">MARK AS CHECKED TODAY</button>`;
+  }
+
+  const dutchNotes = notes.filter(n => n.tag === 'dutch');
+  if (dutchNotes.length) {
+    html += dutchNotes.slice(0,3).map(n => `
+      <div class="note-item" style="padding:8px 0;border-bottom:1px solid var(--border2)">
+        <div style="flex:1"><div class="note-content">${esc(n.text)}</div><div class="note-meta">${fmtTs(n.ts)}</div></div>
+        <button class="note-del" onclick="deleteNote(${n.id})">×</button>
+      </div>`).join('');
+  }
+  el.innerHTML = html;
+}
+
+function markDutchChecked() {
+  const dc = getDutchConfig();
+  dc.lastCheck = new Date().toISOString().split('T')[0];
+  localStorage.setItem('jett_dutch', JSON.stringify(dc));
+  document.getElementById('dutch-last-check').value = dc.lastCheck;
+  renderDutch();
+  showToast('Dutch food check logged');
+}
+
+function renderAllNotes() {
+  const el = document.getElementById('all-notes-body');
+  document.getElementById('note-count').textContent = notes.length ? `(${notes.length})` : '';
+  if (!notes.length) { el.innerHTML = '<div class="note-empty">No notes logged yet.</div>'; return; }
+  el.innerHTML = notes.slice(0, 50).map(n => `
+    <div class="note-item">
+      <span class="note-tag tag-${n.tag}">${n.tag}</span>
+      <div style="flex:1">
+        <div class="note-content">${esc(n.text)}</div>
+        <div class="note-meta">${n.date ? fmtDate(n.date)+' · ' : ''}${fmtTs(n.ts)}</div>
+      </div>
+      <button class="note-del" onclick="deleteNote(${n.id})">×</button>
+    </div>`).join('');
+}
+
+function updateReminderBadge() {
+  const urgent = events.filter(e => daysUntil(e.date) <= 3 && daysUntil(e.date) >= 0).length;
+  const dc = getDutchConfig();
+  const dutchDue = !dc.lastCheck || Math.floor((Date.now()-new Date(dc.lastCheck))/86400000) >= (dc.interval||5);
+  const total = urgent + (dutchDue ? 1 : 0);
+  const badge = document.getElementById('reminder-count');
+  badge.innerHTML = total > 0 ? `<span class="reminder-badge">${total}</span>` : '';
+}
+
+// =============================================================
+// CHAT
+// =============================================================
+function appendMsg(role, text, animate=true, model='sonnet') {
+  const c = document.getElementById('chat-messages');
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  if (!animate) d.style.animation = 'none';
+
+  if (role === 'assistant') {
+    const label = model === 'opus' ? 'JETT · OPUS' : 'JETT';
+    d.innerHTML = `<div class="bubble" data-model="${model}" data-label="${label}">${formatResponse(text)}</div>`;
+  } else {
+    d.innerHTML = `<div class="bubble">${esc(text)}</div>`;
+  }
+  c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+}
+
+// Clean up Claude's response — strip markdown artifacts for clean display
+function formatResponse(text) {
+  if (!text) return '';
+  let s = String(text);
+  // Remove markdown bold/italic
+  s = s.replace(/\*\*(.+?)\*\*/g, '$1');
+  s = s.replace(/\*(.+?)\*/g, '$1');
+  s = s.replace(/__(.+?)__/g, '$1');
+  s = s.replace(/_(.+?)_/g, '$1');
+  // Remove markdown headers
+  s = s.replace(/^#{1,4}\s+/gm, '');
+  // Convert markdown bullet lists to clean text
+  s = s.replace(/^[-•]\s+/gm, '· ');
+  s = s.replace(/^\d+\.\s+/gm, '');
+  // Escape HTML
+  s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Convert newlines
+  s = s.replace(/\n/g,'<br>');
+  return s;
+}
+
+function showTyping() {
+  const c = document.getElementById('chat-messages');
+  const d = document.createElement('div');
+  d.className = 'msg assistant'; d.id = 'typing';
+  d.innerHTML = `<div class="typing"><span></span><span></span><span></span></div>`;
+  c.appendChild(d); c.scrollTop = c.scrollHeight;
+}
+function hideTyping() { const e = document.getElementById('typing'); if(e) e.remove(); }
+
+async function sendMsg(txt) {
+  const input = document.getElementById('txtInput');
+  const msg = txt || input.value.trim();
+  if (!msg) return;
+  input.value = ''; input.style.height = 'auto';
+  appendMsg('user', msg);
+  showTyping();
+  const reply = await callClaude(msg);
+  hideTyping();
+  appendMsg('assistant', reply, true, lastModelUsed);
+  const s = getSettings();
+  if (s.autoSpeak !== 'no') speak(reply);
+  // Auto-render log if message might contain events
+  const lower = msg.toLowerCase();
+  if (lower.includes('maddy') || lower.includes('dutch') || lower.includes('remember') || lower.includes('remind')) {
+    renderLog();
+  }
+}
+
+function handleKey(e) {
+  if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+}
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,90)+'px'; }
+
+// =============================================================
+// MODEL ROUTING — Sonnet / Opus
+// =============================================================
+const MODELS = {
+  sonnet: 'claude-sonnet-4-20250514',
+  opus:   'claude-opus-4-6'
+};
+
+const DEEP_TRIGGERS = [
+  'analyze','analyse','strategy','think through','help me decide','pros and cons',
+  'deep dive','walk me through','explain why','what do you think about','opinion on',
+  'should i','what would you do','compare','difference between','break down',
+  'go deep','jarvis go deep','think carefully','thorough','in depth','detailed',
+  'weigh the options','trade-offs','long term','implications','consequences'
+];
+
+let currentModel = 'sonnet';
+let deepModeNext = false;
+let modelMenuOpen = false;
+
+function getActiveModel(msg) {
+  // 1. Manual deep mode (one-shot)
+  if (deepModeNext) { deepModeNext = false; updateDeepBtn(false); return 'opus'; }
+  // 2. Locked to Opus manually
+  if (currentModel === 'opus') return 'opus';
+  // 3. Smart routing — detect complex queries (if enabled)
+  const s = getSettings();
+  if (s.smartRouting === 'off') return currentModel;
+  const lower = msg.toLowerCase();
+  const isComplex = DEEP_TRIGGERS.some(t => lower.includes(t)) || msg.length > 280;
+  if (isComplex) return 'opus';
+  return 'sonnet';
+}
+
+function toggleModelMenu() {
+  currentModel = currentModel === 'sonnet' ? 'opus' : 'sonnet';
+  updateModelBadge(currentModel);
+  showToast(currentModel === 'opus' ? 'Locked to Opus — full power' : 'Locked to Sonnet — fast mode');
+}
+
+function toggleDeepMode() {
+  deepModeNext = !deepModeNext;
+  updateDeepBtn(deepModeNext);
+  showToast(deepModeNext ? 'Deep mode — next message uses Opus' : 'Deep mode cancelled');
+}
+
+function updateDeepBtn(active) {
+  const btn = document.getElementById('deep-btn');
+  if (!btn) return;
+  btn.classList.toggle('active', active);
+  btn.textContent = active ? 'DEEP ●' : 'DEEP';
+}
+
+function updateModelBadge(model) {
+  const badge = document.getElementById('model-badge');
+  const txt   = document.getElementById('model-badge-txt');
+  if (!badge || !txt) return;
+  badge.className = 'model-badge ' + model;
+  txt.textContent = model === 'opus' ? 'OPUS' : 'SONNET';
+}
+
+function setActiveBadge(model) {
+  updateModelBadge(model);
+  // Also update drive mode indicator
+  const di = document.getElementById('drive-model-indicator');
+  if (di) {
+    di.textContent = model === 'opus' ? 'OPUS' : 'SONNET';
+    di.style.color = model === 'opus' ? 'var(--accent4)' : 'var(--accent)';
+  }
+}
+
+// =============================================================
+// CLAUDE API
+// =============================================================
+async function callClaude(userMsg, systemOverride) {
+  const key = localStorage.getItem('jett_key');
+  if (!key) return "I need an API key to respond. Go to the Config tab and paste your Anthropic key.";
+
+  const model = getActiveModel(userMsg);
+  lastModelUsed = model;
+  setActiveBadge(model);
+
+  history.push({ role:'user', content: userMsg });
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body: JSON.stringify({
+        model: MODELS[model],
+        max_tokens: model === 'opus' ? 2048 : 1024,
+        system: systemOverride || buildSystemPrompt(),
+        messages: history.slice(-40)
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      history.pop(); // Remove failed user message
+      if (res.status===401) return "API key rejected. Double-check it in Config.";
+      if (res.status===429) return "Rate limited. Give it a moment and try again.";
+      if (res.status===529) return "API is overloaded right now. Try again in a few seconds.";
+      return `Error: ${err.error?.message || res.statusText}`;
+    }
+    const data = await res.json();
+    const reply = data.content[0]?.text || "No response received.";
+    history.push({ role:'assistant', content: reply, model: model });
+    saveHistory();
+    // Reset badge to current locked model after response
+    updateModelBadge(currentModel);
+    return reply;
+  } catch(e) {
+    history.pop(); // Remove failed user message
+    updateModelBadge(currentModel);
+    return "Network error. Check your connection.";
+  }
+}
+
+// =============================================================
+// VOICE INPUT
+// =============================================================
+function toggleVoice() {
+  if (isRecording) { stopRec(); return; }
+  startRec();
+}
+
+function startRec() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('Voice not supported — try Safari or Chrome'); return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.continuous = false; recognition.interimResults = true; recognition.lang = 'en-US';
+
+  recognition.onstart = () => {
+    isRecording = true;
+    document.getElementById('orb').classList.add('recording');
+    document.getElementById('mic-btn').classList.add('recording');
+    document.getElementById('orb-lbl').textContent = 'listening...';
+  };
+  recognition.onresult = (e) => {
+    const t = Array.from(e.results).map(r=>r[0].transcript).join('');
+    document.getElementById('txtInput').value = t;
+  };
+  recognition.onend = () => {
+    isRecording = false;
+    document.getElementById('orb').classList.remove('recording');
+    document.getElementById('mic-btn').classList.remove('recording');
+    document.getElementById('orb-lbl').textContent = 'tap to speak';
+    const t = document.getElementById('txtInput').value.trim();
+    if (t) sendMsg(t);
+  };
+  recognition.onerror = (e) => {
+    isRecording = false;
+    document.getElementById('orb').classList.remove('recording');
+    document.getElementById('mic-btn').classList.remove('recording');
+    document.getElementById('orb-lbl').textContent = 'tap to speak';
+    if (e.error !== 'no-speech') showToast('Voice error: '+e.error);
+  };
+  recognition.start();
+}
+
+function stopRec() { if (recognition) recognition.stop(); }
+
+// =============================================================
+// VOICE OUTPUT
+// =============================================================
+function loadVoices() {
+  function populate() {
+    voices = speechSynthesis.getVoices();
+    const sel = document.getElementById('voice-sel');
+    if (!sel || !voices.length) return;
+    sel.innerHTML = voices.map((v,i)=>`<option value="${i}">${v.name} (${v.lang})</option>`).join('');
+    const s = getSettings();
+    if (s.voiceIdx !== undefined) { sel.value = s.voiceIdx; return; }
+    const pref = voices.findIndex(v=>v.name.includes('Samantha')||v.name.includes('Daniel')||(v.lang==='en-US'&&v.name.includes('Google')));
+    if (pref>=0) sel.value = pref;
+  }
+  speechSynthesis.onvoiceschanged = populate; populate();
+}
+
+function speak(text) {
+  if (!text || !window.speechSynthesis) return;
+  if (isSpeaking) speechSynthesis.cancel();
+  const clean = text.replace(/[*_`#]/g,'').replace(/<br>/g,' ').replace(/\n/g,' ').trim();
+  if (!clean) return;
+
+  // iOS Safari workaround: split long text to avoid speech synthesis killing mid-utterance
+  const MAX_CHUNK = 200;
+  if (clean.length > MAX_CHUNK) {
+    speakChunked(clean);
+    return;
+  }
+
+  const u = new SpeechSynthesisUtterance(clean);
+  const sel = document.getElementById('voice-sel');
+  const rate = document.getElementById('speech-rate');
+  if (sel && voices[sel.value]) u.voice = voices[sel.value];
+  if (rate) u.rate = parseFloat(rate.value);
+  u.onstart = ()=>{ isSpeaking=true; };
+  u.onend = ()=>{ isSpeaking=false; };
+  u.onerror = ()=>{ isSpeaking=false; };
+  speechSynthesis.speak(u);
+}
+
+// Chunked speech for longer responses — prevents iOS from dropping audio
+function speakChunked(text) {
+  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+  let queue = [];
+  let chunk = '';
+  for (const s of sentences) {
+    if ((chunk + s).length > 180 && chunk) {
+      queue.push(chunk.trim());
+      chunk = s;
+    } else {
+      chunk += s;
+    }
+  }
+  if (chunk.trim()) queue.push(chunk.trim());
+
+  let idx = 0;
+  isSpeaking = true;
+
+  function speakNext() {
+    if (idx >= queue.length || !isSpeaking) { isSpeaking = false; return; }
+    const u = new SpeechSynthesisUtterance(queue[idx]);
+    const sel = document.getElementById('voice-sel');
+    const rate = document.getElementById('speech-rate');
+    if (sel && voices[sel.value]) u.voice = voices[sel.value];
+    if (rate) u.rate = parseFloat(rate.value);
+    u.onend = () => { idx++; speakNext(); };
+    u.onerror = () => { isSpeaking = false; };
+    speechSynthesis.speak(u);
+  }
+  speakNext();
+}
+
+// =============================================================
+// BRIEFING
+// =============================================================
+async function loadBriefing() {
+  loadWeather(); loadCommodities(); renderRadar(); loadAIBriefing();
+}
+
+async function loadWeather() {
+  const el = document.getElementById('weather-body');
+  el.innerHTML = '<div class="loading-msg">Fetching...</div>';
+  try {
+    const geo = await fetch('https://geocoding-api.open-meteo.com/v1/search?name=Houston,TX&count=1');
+    const gd = await geo.json();
+    const lat = gd.results[0].latitude, lon = gd.results[0].longitude;
+    const wr = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,precipitation,weathercode,windspeed_10m,relativehumidity_2m&temperature_unit=fahrenheit&windspeed_unit=mph`);
+    const w = await wr.json(); const c = w.current;
+    el.innerHTML = `
+      <div class="weather-big">${Math.round(c.temperature_2m)}°F</div>
+      <div class="weather-sub">${wDesc(c.weathercode)} · Feels like ${Math.round(c.apparent_temperature)}°F</div>
+      <div class="weather-grid">
+        <div>Humidity ${c.relativehumidity_2m}%</div>
+        <div>Wind ${Math.round(c.windspeed_10m)} mph</div>
+        <div>Precip ${c.precipitation}mm</div>
+        <div>Houston, TX</div>
+      </div>`;
+  } catch(e) { el.innerHTML = '<div class="loading-msg">Weather unavailable</div>'; }
+}
+
+function wDesc(c) {
+  if(c===0)return'Clear sky'; if(c<=3)return'Partly cloudy'; if(c<=49)return'Foggy';
+  if(c<=57)return'Drizzle'; if(c<=67)return'Rain'; if(c<=77)return'Snow';
+  if(c<=82)return'Rain showers'; if(c<=99)return'Thunderstorm'; return'—';
+}
+
+async function loadCommodities() {
+  const el = document.getElementById('commodities-body');
+  el.innerHTML = '<div class="loading-msg">Loading markets...</div>';
+  const pairs = [
+    {s:'NG=F',n:'Natural Gas'},
+    {s:'CL=F',n:'Crude Oil WTI'},
+    {s:'BZ=F',n:'Brent Crude'},
+    {s:'GC=F',n:'Gold'},
+    {s:'SI=F',n:'Silver'},
+  ];
+  try {
+    const results = await Promise.allSettled(pairs.map(async p => {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${p.s}?interval=1d&range=2d`;
+      const r = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+      const d = await r.json();
+      const m = d.chart.result[0].meta;
+      const price = m.regularMarketPrice;
+      const prev = m.previousClose || m.chartPreviousClose;
+      const chg = ((price-prev)/prev*100).toFixed(2);
+      return {name:p.n, price:price.toFixed(2), chg, up:parseFloat(chg)>=0};
+    }));
+    el.innerHTML = results.map((r,i)=>{
+      if(r.status==='fulfilled'){const d=r.value;return`<div class="commodity-row"><span style="color:var(--text-dim)">${d.name}</span><span>$${d.price}</span><span class="${d.up?'up':'dn'}">${d.up?'▲':'▼'} ${Math.abs(d.chg)}%</span></div>`;}
+      return`<div class="commodity-row"><span style="color:var(--text-dim)">${pairs[i].n}</span><span style="color:var(--text-muted)">—</span></div>`;
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="loading-msg">Market data unavailable</div>'; }
+}
+
+function renderRadar() {
+  const el = document.getElementById('radar-body');
+  const soon = events.filter(e=>daysUntil(e.date)>=0&&daysUntil(e.date)<=14)
+    .sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,5);
+  const dc = getDutchConfig();
+  const dutchDue = !dc.lastCheck || Math.floor((Date.now()-new Date(dc.lastCheck))/86400000)>=(dc.interval||5);
+  let html = '';
+  if (dutchDue) html += `<div style="padding:6px 0;color:var(--accent3);font-size:12px">Dutch food check overdue — HEB San Felipe</div>`;
+  if (soon.length) html += soon.map(e=>`<div class="event-row" style="padding:5px 0"><div class="event-date-badge">${fmtDate(e.date)}</div><div class="event-desc">${esc(e.text)}</div></div>`).join('');
+  if (!html) html = '<div class="loading-msg">All clear. Nothing urgent on the radar.</div>';
+  el.innerHTML = html;
+}
+
+async function loadAIBriefing() {
+  const el = document.getElementById('news-body');
+  const key = localStorage.getItem('jett_key');
+  if (!key) { el.innerHTML='<div class="loading-msg">Add API key in Config to enable AI briefing</div>'; return; }
+  el.innerHTML = '<div class="loading-msg">Generating...</div>';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model: MODELS[currentModel === 'opus' ? 'opus' : 'sonnet'],
+        max_tokens:400,
+        messages:[{role:'user',content:`You are Jett. Give Brett a concise morning market briefing. Focus: US natural gas markets (Henry Hub, pipeline flows, storage, weather demand), then brief color on crude oil and gold. End with one broader macro note. Today is ${new Date().toLocaleDateString()}. Under 160 words. Plain text, no markdown, no bullet asterisks. Spoken-friendly tone.`}]
+      })
+    });
+    const d = await res.json();
+    el.innerHTML = `<div style="font-size:13px;font-weight:300;line-height:1.65">${esc(d.content[0]?.text||'No response')}</div>`;
+  } catch(e) { el.innerHTML='<div class="loading-msg">Could not generate briefing</div>'; }
+}
+
+// =============================================================
+// DRIVE MODE
+// =============================================================
+let driveActive = false;
+let driveListening = false;
+let driveSpeaking = false;
+let driveRec = null;
+let driveAutoRestart = false;
+let driveSilenceTimer = null;
+
+function buildDriveSystemPrompt() {
+  const base = buildSystemPrompt();
+  return base + `
+
+DRIVE MODE INSTRUCTIONS:
+You are in continuous voice conversation mode. Brett is likely driving or hands-free.
+- Keep responses concise and spoken-friendly — 2-4 sentences max unless he asks for more detail.
+- This is a two-way conversation, not Q&A. Be natural. Ask follow-up questions occasionally.
+- Push back on opinions when you genuinely disagree — don't just validate. Be direct but not combative.
+- If Brett mentions something to remember, confirm it verbally and tell him to log it later.
+- Match his energy — if he's casual, be casual. If he's focused on a topic, engage deeply.
+- You can bring up things unprompted if relevant — a market move, an upcoming event, Dutch's food check.
+- Never say "As an AI" or similar. You're Jett. That's it.
+- Keep it American — loose, confident, no stuffiness.`;
+}
+
+function enterDriveMode() {
+  const key = localStorage.getItem('jett_key');
+  if (!key) { showToast('Add API key in Config first'); return; }
+  driveActive = true;
+  driveAutoRestart = false;
+  document.getElementById('drive-overlay').classList.add('active');
+  setDriveState('idle');
+  const greet = getDriveGreeting();
+  driveSpeak(greet, () => { driveStartListening(); });
+}
+
+function getDriveGreeting() {
+  const hour = new Date().getHours();
+  const tod = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+  const dc = getDutchConfig();
+  const dutchDue = !dc.lastCheck || Math.floor((Date.now()-new Date(dc.lastCheck))/86400000) >= (dc.interval||5);
+  let extra = dutchDue ? " One thing — Dutch's food check is overdue, worth swinging by HEB." : "";
+  const upcoming = events.filter(e=>daysUntil(e.date)>=0&&daysUntil(e.date)<=3);
+  if (upcoming.length) extra += ` Also, you've got something coming up in the next few days — ${upcoming[0].text}.`;
+  return `Drive Mode active. Good ${tod}, Brett.${extra} What's on your mind?`;
+}
+
+function exitDriveMode() {
+  driveActive = false;
+  driveAutoRestart = false;
+  if (driveRec) { try { driveRec.stop(); } catch(e){} driveRec = null; }
+  if (isSpeaking) { speechSynthesis.cancel(); isSpeaking = false; }
+  clearTimeout(driveSilenceTimer);
+  document.getElementById('drive-overlay').classList.remove('active');
+  setDriveState('idle');
+}
+
+function driveOrbTap() {
+  if (driveSpeaking) {
+    speechSynthesis.cancel();
+    isSpeaking = false; driveSpeaking = false;
+    driveStartListening();
+    return;
+  }
+  if (driveListening) {
+    if (driveRec) driveRec.stop();
+    return;
+  }
+  driveStartListening();
+}
+
+function setDriveState(state, text='') {
+  const wave = document.getElementById('drive-wave');
+  const lbl  = document.getElementById('drive-state');
+  const orb  = document.getElementById('drive-orb');
+  wave.className = 'drive-wave ' + (state === 'idle' ? '' : state);
+  orb.className  = 'drive-orb '  + (state === 'idle' ? '' : state);
+  const labels = { idle:'tap orb to start', listening:'listening...', thinking:'thinking...', speaking:'speaking — tap to interrupt' };
+  lbl.className = 'drive-state ' + (state === 'idle' ? '' : state);
+  lbl.textContent = text || labels[state] || state;
+}
+
+function driveStartListening() {
+  if (!driveActive) return;
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('Voice not supported — use Safari'); return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  driveRec = new SR();
+  driveRec.continuous = false;
+  driveRec.interimResults = true;
+  driveRec.lang = 'en-US';
+
+  let finalTranscript = '';
+
+  driveRec.onstart = () => {
+    driveListening = true;
+    setDriveState('listening');
+    document.getElementById('drive-transcript').textContent = '';
+  };
+
+  driveRec.onresult = (e) => {
+    let interim = '';
+    finalTranscript = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    document.getElementById('drive-transcript').textContent = finalTranscript || interim;
+  };
+
+  driveRec.onend = () => {
+    driveListening = false;
+    if (!driveActive) return;
+    const said = finalTranscript.trim() || document.getElementById('drive-transcript').textContent.trim();
+    if (said.length > 1) {
+      driveProcessMessage(said);
+    } else {
+      setTimeout(() => { if (driveActive && !driveSpeaking) driveStartListening(); }, 800);
+    }
+  };
+
+  driveRec.onerror = (e) => {
+    driveListening = false;
+    if (!driveActive) return;
+    if (e.error === 'no-speech') {
+      setTimeout(() => { if (driveActive && !driveSpeaking) driveStartListening(); }, 600);
+    }
+  };
+
+  driveRec.start();
+}
+
+async function driveProcessMessage(msg) {
+  if (!driveActive) return;
+  setDriveState('thinking');
+  document.getElementById('drive-transcript').textContent = msg;
+
+  history.push({ role:'user', content: msg });
+
+  const key = localStorage.getItem('jett_key');
+  // Drive mode: smart routing applies here too
+  const model = getActiveModel(msg);
+  lastModelUsed = model;
+  setActiveBadge(model);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body: JSON.stringify({
+        model: MODELS[model],
+        max_tokens: model === 'opus' ? 600 : 300,
+        system: buildDriveSystemPrompt(),
+        messages: history.slice(-30)
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || "Didn't catch that.";
+    history.push({ role:'assistant', content: reply, model: model });
+    saveHistory();
+    updateModelBadge(currentModel);
+    document.getElementById('drive-response').textContent = reply;
+    driveSpeak(reply, () => {
+      if (driveActive) driveStartListening();
+    });
+  } catch(e) {
+    history.pop(); // Remove failed user message
+    driveSpeak("Lost connection briefly. Try again.", () => {
+      if (driveActive) driveStartListening();
+    });
+  }
+}
+
+function driveSpeak(text, onDone) {
+  if (!window.speechSynthesis) { onDone && onDone(); return; }
+  speechSynthesis.cancel();
+  const clean = text.replace(/[*_`#]/g,'').replace(/<br>/g,' ').replace(/\n/g,' ').trim();
+  const u = new SpeechSynthesisUtterance(clean);
+  const sel = document.getElementById('voice-sel');
+  const rate = document.getElementById('speech-rate');
+  if (sel && voices[sel.value]) u.voice = voices[sel.value];
+  if (rate) u.rate = parseFloat(rate.value);
+  driveSpeaking = true; isSpeaking = true;
+  setDriveState('speaking');
+  u.onend = () => {
+    driveSpeaking = false; isSpeaking = false;
+    if (driveActive) setDriveState('idle');
+    onDone && onDone();
+  };
+  u.onerror = () => {
+    driveSpeaking = false; isSpeaking = false;
+    if (driveActive) setDriveState('idle');
+    onDone && onDone();
+  };
+  speechSynthesis.speak(u);
+}
+
+
+function fmtDate(d) {
+  try { return new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+  catch(e) { return d; }
+}
+function fmtTs(ts) {
+  try { return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
+  catch(e) { return ''; }
+}
+function daysUntil(d) {
+  const now = new Date(new Date().toDateString());
+  const then = new Date(d+'T12:00:00');
+  return Math.round((then-now)/86400000);
+}
+function esc(t) {
+  if (!t) return '';
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+let toastTimer;
+function showToast(m) {
+  const t = document.getElementById('toast');
+  t.textContent = m; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>
