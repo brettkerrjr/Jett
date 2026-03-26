@@ -110,7 +110,7 @@ header {
 /* ---- PANELS ---- */
 .panel { display:none; flex:1; flex-direction:column; overflow:hidden; min-height:0; }
 .panel.active { display:flex; }
-.scroll-body { flex:1; overflow-y:auto; padding:14px 14px 20px; display:flex; flex-direction:column; gap:12px; }
+.scroll-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 14px 20px; display:flex; flex-direction:column; gap:12px; }
 .scroll-body::-webkit-scrollbar { width:2px; }
 .scroll-body::-webkit-scrollbar-thumb { background:var(--border); border-radius:1px; }
 
@@ -119,7 +119,7 @@ header {
   background:var(--panel);
   border:1px solid var(--border2);
   border-radius:3px;
-  overflow:hidden;
+  overflow:visible;
 }
 .card-header {
   padding:9px 13px;
