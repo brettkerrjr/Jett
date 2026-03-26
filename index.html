@@ -949,6 +949,7 @@ select.finput { appearance:none; cursor:pointer; }
           <div class="field">
             <label class="flabel">Jett Voice</label>
             <select class="finput" id="voice-sel"><option>Loading voices...</option></select>
+            <button onclick="testVoice()" style="margin-top:6px;background:none;border:1px solid var(--border);color:var(--text-dim);padding:5px 12px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">▶ TEST VOICE</button>
           </div>
           <div class="field">
             <label class="flabel">Speed <span id="rate-val" style="color:var(--accent)">1.0×</span></label>
@@ -1343,7 +1344,9 @@ function setKeyStatus(ok) {
 
 function saveSettings() {
   const s = getSettings();
-  s.voiceIdx = document.getElementById('voice-sel').value;
+  const sel = document.getElementById('voice-sel');
+  // Store by voice name so it survives re-sorts
+  s.voiceIdx = voices[sel.value] ? voices[sel.value].name : sel.value;
   s.speechRate = document.getElementById('speech-rate').value;
   s.autoSpeak = document.getElementById('auto-speak').value;
   localStorage.setItem('jett_settings', JSON.stringify(s));
@@ -1922,16 +1925,49 @@ function stopRec() { if (recognition) recognition.stop(); }
 // =============================================================
 function loadVoices() {
   function populate() {
-    voices = speechSynthesis.getVoices();
+    const all = speechSynthesis.getVoices();
+    if (!all.length) return;
+    // Sort: en-US first, then other English, rest last
+    const sorted = [
+      ...all.filter(v => v.lang === 'en-US'),
+      ...all.filter(v => v.lang.startsWith('en') && v.lang !== 'en-US'),
+      ...all.filter(v => !v.lang.startsWith('en')),
+    ];
+    voices = sorted;
     const sel = document.getElementById('voice-sel');
-    if (!sel || !voices.length) return;
-    sel.innerHTML = voices.map((v,i)=>`<option value="${i}">${v.name} (${v.lang})</option>`).join('');
+    if (!sel) return;
+    sel.innerHTML = sorted.map((v,i) => {
+      const label = v.lang === 'en-US' ? v.name : `${v.name} (${v.lang})`;
+      return `<option value="${i}">${label}</option>`;
+    }).join('');
     const s = getSettings();
-    if (s.voiceIdx !== undefined) { sel.value = s.voiceIdx; return; }
-    const pref = voices.findIndex(v=>v.name.includes('Samantha')||v.name.includes('Daniel')||(v.lang==='en-US'&&v.name.includes('Google')));
-    if (pref>=0) sel.value = pref;
+    if (s.voiceIdx !== undefined) {
+      // Match saved voice by name since index may shift after sort
+      const savedIdx = sorted.findIndex(v => v.name === s.voiceIdx);
+      sel.value = savedIdx >= 0 ? savedIdx : 0;
+      return;
+    }
+    const pref = sorted.findIndex(v =>
+      v.name.includes('Samantha') || v.name.includes('Tom') ||
+      v.name.includes('Daniel') || (v.lang === 'en-US' && v.name.includes('Google'))
+    );
+    sel.value = pref >= 0 ? pref : 0;
   }
-  speechSynthesis.onvoiceschanged = populate; populate();
+  speechSynthesis.onvoiceschanged = populate;
+  populate();
+  // iOS sometimes needs a nudge
+  setTimeout(populate, 500);
+}
+
+function testVoice() {
+  const sel = document.getElementById('voice-sel');
+  const rate = document.getElementById('speech-rate');
+  if (!sel) return;
+  const u = new SpeechSynthesisUtterance("Hey Brett, this is Jett. How does this voice sound?");
+  if (voices[sel.value]) u.voice = voices[sel.value];
+  if (rate) u.rate = parseFloat(rate.value);
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
 }
 
 function speak(text) {
@@ -2000,11 +2036,11 @@ async function loadBriefing() {
 async function loadWeather() {
   const el = document.getElementById('weather-body');
   el.innerHTML = '<div class="loading-msg">Fetching...</div>';
+  // Houston, TX — hardcoded to skip geocoding step
+  const lat = 29.7604, lon = -95.3698;
   try {
-    const geo = await fetch('https://geocoding-api.open-meteo.com/v1/search?name=Houston,TX&count=1');
-    const gd = await geo.json();
-    const lat = gd.results[0].latitude, lon = gd.results[0].longitude;
     const wr = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,precipitation,weathercode,windspeed_10m,relativehumidity_2m&temperature_unit=fahrenheit&windspeed_unit=mph`);
+    if (!wr.ok) throw new Error('API error');
     const w = await wr.json(); const c = w.current;
     el.innerHTML = `
       <div class="weather-big">${Math.round(c.temperature_2m)}°F</div>
@@ -2015,7 +2051,7 @@ async function loadWeather() {
         <div>Precip ${c.precipitation}mm</div>
         <div>Houston, TX</div>
       </div>`;
-  } catch(e) { el.innerHTML = '<div class="loading-msg">Weather unavailable</div>'; }
+  } catch(e) { el.innerHTML = '<div class="loading-msg">Weather unavailable — check connection</div>'; }
 }
 
 function wDesc(c) {
