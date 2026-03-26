@@ -257,11 +257,17 @@ header {
 /* ---- IPHONE RESPONSIVE ---- */
 @media screen and (max-width: 480px) {
   #app { padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
+
+  /* Header — slightly compact */
   header { padding:10px 14px 8px; }
   .logo { font-size:22px; letter-spacing:5px; }
   .logo-sub { font-size:7px; letter-spacing:2px; }
   .clock { font-size:15px; }
+
+  /* Tabs */
   .tab { font-size:10px; padding:7px 2px 6px; letter-spacing:1px; }
+
+  /* Chat orb — smaller so chat gets more room */
   .orb-zone { padding:10px 16px 4px; gap:4px; }
   .orb { width:54px; height:54px; }
   .orb-ring:nth-child(1){width:70px;height:70px}
@@ -269,19 +275,54 @@ header {
   .orb-ring:nth-child(3){width:102px;height:102px}
   .orb svg { width:24px; height:24px; }
   .orb-label { font-size:9px; }
-  .input-bar { padding:8px 10px; gap:6px; flex-wrap:wrap; }
+
+  /* Input bar two-row */
+  .input-bar { padding:8px 10px; gap:6px; }
   .input-row-top { display:flex; gap:6px; width:100%; }
   .input-row-bottom { display:flex; gap:6px; width:100%; align-items:flex-end; }
   .drive-trigger { padding:5px 10px; font-size:10px; }
   .deep-btn { padding:0 8px; height:34px; font-size:8px; }
-  #txtInput { font-size:13px; padding:8px 10px; }
+  #txtInput { font-size:14px; padding:8px 10px; }
   .ibtn { width:36px; height:36px; }
-  .scroll-body { padding:12px 12px 16px; gap:10px; }
-  .card-body { padding:10px 11px; }
-  .card-header { padding:7px 11px; font-size:9px; }
-  .field { margin-bottom:9px; }
-  .finput { padding:7px 9px; font-size:12px; }
-  .btn { padding:8px; font-size:11px; }
+
+  /* Scroll panels — generous spacing for Config/Log */
+  .scroll-body { padding:14px 14px 30px; gap:14px; }
+
+  /* Cards — open them up, not squish them */
+  .card { border-radius:5px; }
+  .card-header { padding:10px 14px; font-size:10px; letter-spacing:2.5px; }
+  .card-body { padding:14px 14px; }
+
+  /* Form elements — full-size touch targets */
+  .field { margin-bottom:14px; }
+  .flabel { font-size:9px; margin-bottom:6px; letter-spacing:2px; }
+  .finput { padding:11px 12px; font-size:14px; border-radius:4px; }
+  select.finput { padding:11px 12px; font-size:13px; }
+  textarea.finput { min-height:60px; }
+  .btn { padding:12px; font-size:12px; letter-spacing:2.5px; border-radius:3px; margin-top:10px; }
+  .hint { font-size:12px; line-height:1.7; margin-top:10px; }
+
+  /* Settings-specific — extra bottom padding so last card isn't cut off */
+  #settings-panel .scroll-body { padding-bottom:50px; }
+
+  /* API status */
+  .api-status { margin-top:8px; font-size:10px; }
+
+  /* Notes */
+  .note-item { padding:12px 14px; gap:12px; }
+  .note-content { font-size:14px; }
+  .note-meta { font-size:10px; margin-top:4px; }
+  .note-tag { font-size:9px; padding:3px 7px; }
+  .note-del { font-size:18px; padding:4px; }
+
+  /* Events */
+  .event-row { padding:10px 0; gap:12px; }
+  .event-desc { font-size:14px; }
+  .event-date-badge { font-size:10px; }
+
+  /* Weather/briefing */
+  .weather-big { font-size:38px; }
+  .commodity-row { font-size:12px; padding:7px 0; }
 }
 
 /* ---- FORM ELEMENTS ---- */
