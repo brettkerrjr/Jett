@@ -1684,7 +1684,7 @@ async function callClaude(userMsg, systemOverride) {
         model: MODELS[model],
         max_tokens: model === 'opus' ? 2048 : 1024,
         system: systemOverride || buildSystemPrompt(),
-        messages: history.slice(-40)
+        messages: history.slice(-40).map(m => ({role: m.role, content: m.content}))
       })
     });
     if (!res.ok) {
@@ -2083,7 +2083,7 @@ async function driveProcessMessage(msg) {
         model: MODELS[model],
         max_tokens: model === 'opus' ? 600 : 300,
         system: buildDriveSystemPrompt(),
-        messages: history.slice(-30)
+        messages: history.slice(-30).map(m => ({role: m.role, content: m.content}))
       })
     });
     const data = await res.json();
