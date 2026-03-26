@@ -84,6 +84,7 @@ header {
   display:flex; align-items:center; justify-content:space-between;
   border-bottom:1px solid var(--border);
   background:linear-gradient(180deg,rgba(0,200,255,0.04) 0%,transparent 100%);
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
 }
 .logo { font-family:'Rajdhani',sans-serif; font-size:26px; font-weight:700; letter-spacing:6px; color:var(--accent); text-shadow:var(--glow); line-height:1; }
 .logo-sub { font-family:'Share Tech Mono',monospace; font-size:8px; color:var(--text-dim); letter-spacing:3px; margin-top:2px; }
@@ -134,6 +135,7 @@ header {
   border:1px solid var(--border2);
   border-radius:3px;
   overflow:visible !important;
+  transition:border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .card-header {
   padding:9px 13px;
@@ -241,6 +243,7 @@ header {
   padding:10px 14px 12px;
   border-top:1px solid var(--border);
   background:var(--surface);
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
   display:flex; gap:8px; align-items:flex-end;
 }
 #txtInput {
@@ -250,7 +253,7 @@ header {
   border-radius:4px; resize:none; outline:none; max-height:90px;
   transition:border-color 0.2s;
 }
-#txtInput:focus { border-color:var(--accent); }
+#txtInput:focus { border-color:var(--accent); box-shadow:0 0 12px rgba(0,200,255,0.08); }
 #txtInput::placeholder { color:var(--text-muted); }
 .ibtn {
   width:40px; height:40px; border-radius:4px;
@@ -376,11 +379,34 @@ select.finput { appearance:none; cursor:pointer; }
 .tag-dutch { background:rgba(255,107,53,0.1); color:var(--accent3); border:1px solid rgba(255,107,53,0.2); }
 .tag-work { background:rgba(0,255,157,0.1); color:var(--accent2); border:1px solid rgba(0,255,157,0.2); }
 .tag-event { background:rgba(255,56,96,0.1); color:var(--danger); border:1px solid rgba(255,56,96,0.2); }
+.tag-draft { background:rgba(0,200,255,0.1); color:var(--accent); border:1px solid rgba(0,200,255,0.2); }
 .note-content { flex:1; font-size:13px; line-height:1.5; }
 .note-meta { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-dim); margin-top:3px; }
 .note-del { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:0 2px; flex-shrink:0; transition:color 0.2s; }
 .note-del:hover { color:var(--danger); }
 .note-empty { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text-dim); text-align:center; padding:20px; }
+
+/* ---- DRAFT ITEMS ---- */
+.draft-item {
+  padding:10px 12px;
+  border-bottom:1px solid var(--border2);
+}
+.draft-item:last-child { border-bottom:none; }
+.draft-to { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-dim); letter-spacing:1px; }
+.draft-subject { font-size:13px; font-weight:400; color:var(--text); margin:4px 0; }
+.draft-body { font-size:12px; font-weight:300; color:var(--text-dim); line-height:1.5; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.draft-actions { display:flex; gap:6px; margin-top:8px; }
+.draft-btn {
+  padding:5px 10px; border-radius:3px; cursor:pointer;
+  font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:1px;
+  transition:all 0.2s; text-decoration:none;
+}
+.draft-btn-send { background:rgba(0,200,255,0.08); border:1px solid var(--accent); color:var(--accent); }
+.draft-btn-send:hover { background:rgba(0,200,255,0.15); }
+.draft-btn-copy { background:rgba(0,255,157,0.08); border:1px solid var(--accent2); color:var(--accent2); }
+.draft-btn-copy:hover { background:rgba(0,255,157,0.15); }
+.draft-btn-del { background:none; border:1px solid var(--border); color:var(--text-muted); }
+.draft-btn-del:hover { border-color:var(--danger); color:var(--danger); }
 
 /* ---- EVENT ITEMS ---- */
 .event-row {
@@ -417,10 +443,12 @@ select.finput { appearance:none; cursor:pointer; }
 
 /* ---- TOAST ---- */
 #toast {
-  position:fixed; top:72px; left:50%; transform:translateX(-50%) translateY(-6px);
+  position:fixed; top:72px; left:50%; transform:translateX(-50%) translateY(-8px);
   background:var(--panel); border:1px solid var(--accent); color:var(--accent);
-  padding:7px 14px; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px;
-  border-radius:2px; opacity:0; transition:all 0.25s; z-index:1000; pointer-events:none; white-space:nowrap;
+  padding:8px 18px; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px;
+  border-radius:20px; opacity:0; transition:all 0.3s ease; z-index:1000; pointer-events:none; white-space:nowrap;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  box-shadow:0 4px 20px rgba(0,0,0,0.4);
 }
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
@@ -789,6 +817,7 @@ select.finput { appearance:none; cursor:pointer; }
               <option value="dutch">Dutch</option>
               <option value="work">Work</option>
               <option value="event">Event / Date</option>
+              <option value="draft">Email Draft</option>
             </select>
           </div>
           <div class="field">
@@ -830,10 +859,21 @@ select.finput { appearance:none; cursor:pointer; }
         </div>
       </div>
 
-      <!-- All notes -->
+      <!-- Email Drafts -->
+      <div class="card card-accent-blue" id="drafts-card" style="display:none">
+        <div class="card-header">
+          <span>✉ Email Drafts</span>
+          <span id="draft-count" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-dim)"></span>
+        </div>
+        <div id="drafts-body">
+          <div class="note-empty">No drafts. Ask Jett to draft an email.</div>
+        </div>
+      </div>
+
+      <!-- General & Work notes -->
       <div class="card card-accent-blue">
         <div class="card-header">
-          <span>▣ All Logged Notes</span>
+          <span>▣ General & Work Notes</span>
           <span id="note-count" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-dim)"></span>
         </div>
         <div id="all-notes-body">
@@ -1201,17 +1241,21 @@ TODAY: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',mo
 RESPONSE STYLE: Spoken-friendly — no markdown headers, no bullet asterisks, no bold text. Use plain conversational text with line breaks for structure. Reference logged notes naturally, don't recite them robotically.
 
 CHAT-TO-LOG SYSTEM:
-You can save notes and events directly from conversation. When Brett asks you to remember something, log something, or save an event, include a structured command at the END of your response using this exact format:
+You can save notes and events directly from conversation. When Brett asks you to remember something, log something, or save an event, include ONE structured command per item at the END of your response using this exact format:
 
-[LOG:tag:text] — saves a note. Tags: general, maddy, dutch, work, event
-[EVENT:YYYY-MM-DD:text] — saves a dated event
+[LOG:tag:text] — saves a note. Tags: general, maddy, dutch, work
+[EVENT:YYYY-MM-DD:text] — saves a dated event (use this instead of LOG for anything with a date)
+[DRAFT:to:subject:body] — saves an email draft for Brett to review
+
+IMPORTANT: Use exactly ONE command per item. Do NOT duplicate — if something has a date, use [EVENT:...] only. If it's a note, use [LOG:...] only. Never use both for the same thing.
 
 Examples:
-- Brett says "Remember that Maddy wants to try Uchi for her birthday" → include [LOG:maddy:Wants to try Uchi for her birthday] at the end of your response.
-- Brett says "We have dinner reservations Saturday March 29" → include [EVENT:2026-03-29:Dinner reservations] and [LOG:event:Dinner reservations March 29] at the end.
-- Brett says "Dutch was low on food last time I checked" → include [LOG:dutch:Was low on food last check] at the end.
+- "Remember Maddy wants to try Uchi" → [LOG:maddy:Wants to try Uchi for her birthday]
+- "We have dinner Saturday March 29" → [EVENT:2026-03-29:Dinner reservations]
+- "Dutch was low on food" → [LOG:dutch:Was low on food last check]
+- "Draft an email to John about the pipeline nomination" → [DRAFT:john@example.com:Pipeline Nomination Update:Hi John, ...]
 
-You can include multiple commands. Always confirm what you logged in your spoken response BEFORE the commands. The commands will be hidden from Brett — he just sees your natural response and gets a toast notification that it was logged.
+Confirm what you logged in your spoken response BEFORE the commands. Commands are hidden from display.
 
 DAILY BRIEFING FORMAT (when asked):
 1. Upcoming — anything in the next 7 days
@@ -1395,7 +1439,7 @@ function updateSysInfo() {
     const size = new Blob([JSON.stringify(localStorage)]).size;
     document.getElementById('sys-size').textContent = `DATA: ${(size/1024).toFixed(1)} KB stored locally`;
     document.getElementById('sys-msgs').textContent = `MESSAGES: ${history.length}`;
-    document.getElementById('sys-notes').textContent = `NOTES: ${notes.length} · EVENTS: ${events.length}`;
+    document.getElementById('sys-notes').textContent = `NOTES: ${notes.length} · EVENTS: ${events.length} · DRAFTS: ${getDrafts().length}`;
   } catch(e) {}
 }
 
@@ -1410,6 +1454,7 @@ function exportData() {
     version: 'jett_v5',
     exported: new Date().toISOString(),
     notes, events, history,
+    drafts: getDrafts(),
     settings: getSettings(),
     dutch: getDutchConfig(),
     tokens: getTokenUsage(),
@@ -1449,6 +1494,7 @@ function importData(input) {
         history = data.history.slice(-60);
         saveHistory();
       }
+      if (data.drafts && Array.isArray(data.drafts)) saveDrafts(data.drafts);
       if (data.settings) localStorage.setItem('jett_settings', JSON.stringify(data.settings));
       if (data.dutch) localStorage.setItem('jett_dutch', JSON.stringify(data.dutch));
       if (data.tokens) localStorage.setItem('jett_tokens', JSON.stringify(data.tokens));
@@ -1511,8 +1557,59 @@ function renderLog() {
   renderReminders();
   renderMaddy();
   renderDutch();
+  renderDrafts();
   renderAllNotes();
   updateReminderBadge();
+}
+
+// =============================================================
+// EMAIL DRAFTS
+// =============================================================
+function getDrafts() {
+  try { return JSON.parse(localStorage.getItem('jett_drafts') || '[]'); } catch(e) { return []; }
+}
+function saveDrafts(d) { localStorage.setItem('jett_drafts', JSON.stringify(d)); }
+
+function deleteDraft(id) {
+  const d = getDrafts().filter(x => x.id !== id);
+  saveDrafts(d);
+  renderDrafts();
+}
+
+function copyDraft(id) {
+  const draft = getDrafts().find(x => x.id === id);
+  if (!draft) return;
+  const text = `To: ${draft.to}\nSubject: ${draft.subject}\n\n${draft.body}`;
+  navigator.clipboard.writeText(text).then(() => showToast('Draft copied')).catch(() => showToast('Copy failed'));
+}
+
+function openDraftMail(id) {
+  const draft = getDrafts().find(x => x.id === id);
+  if (!draft) return;
+  const mailto = `mailto:${encodeURIComponent(draft.to)}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`;
+  window.open(mailto, '_blank');
+}
+
+function renderDrafts() {
+  const drafts = getDrafts();
+  const card = document.getElementById('drafts-card');
+  const el = document.getElementById('drafts-body');
+  const ct = document.getElementById('draft-count');
+  if (!card || !el) return;
+  card.style.display = drafts.length ? 'block' : 'none';
+  if (ct) ct.textContent = drafts.length ? `(${drafts.length})` : '';
+  if (!drafts.length) return;
+  el.innerHTML = drafts.slice(0,10).map(d => `
+    <div class="draft-item">
+      <div class="draft-to">TO: ${esc(d.to || 'Not specified')}</div>
+      <div class="draft-subject">${esc(d.subject || 'No subject')}</div>
+      <div class="draft-body">${esc(d.body || '')}</div>
+      <div class="draft-actions">
+        <a class="draft-btn draft-btn-send" onclick="openDraftMail(${d.id})">▶ OPEN IN MAIL</a>
+        <button class="draft-btn draft-btn-copy" onclick="copyDraft(${d.id})">COPY</button>
+        <button class="draft-btn draft-btn-del" onclick="deleteDraft(${d.id})">×</button>
+      </div>
+    </div>`).join('');
 }
 
 function renderReminders() {
@@ -1611,9 +1708,11 @@ function markDutchChecked() {
 
 function renderAllNotes() {
   const el = document.getElementById('all-notes-body');
-  document.getElementById('note-count').textContent = notes.length ? `(${notes.length})` : '';
-  if (!notes.length) { el.innerHTML = '<div class="note-empty">No notes logged yet.</div>'; return; }
-  el.innerHTML = notes.slice(0, 50).map(n => `
+  // Only show general + work here — maddy/dutch/event have dedicated sections
+  const filtered = notes.filter(n => n.tag === 'general' || n.tag === 'work');
+  document.getElementById('note-count').textContent = filtered.length ? `(${filtered.length})` : '';
+  if (!filtered.length) { el.innerHTML = '<div class="note-empty">No general or work notes yet.</div>'; return; }
+  el.innerHTML = filtered.slice(0, 50).map(n => `
     <div class="note-item">
       <span class="note-tag tag-${n.tag}">${n.tag}</span>
       <div style="flex:1">
@@ -1659,6 +1758,7 @@ function formatResponse(text) {
   // Strip chat-to-log commands before display
   s = s.replace(/\[LOG:\w+:[^\]]+\]/g, '');
   s = s.replace(/\[EVENT:\d{4}-\d{2}-\d{2}:[^\]]+\]/g, '');
+  s = s.replace(/\[DRAFT:[^\]]+\]/g, '');
   // Remove markdown bold/italic
   s = s.replace(/\*\*(.+?)\*\*/g, '$1');
   s = s.replace(/\*(.+?)\*/g, '$1');
@@ -1697,11 +1797,6 @@ async function sendMsg(txt) {
   appendMsg('assistant', reply, true, lastModelUsed);
   const s = getSettings();
   if (s.autoSpeak !== 'no') speak(reply);
-  // Auto-render log if message might contain events
-  const lower = msg.toLowerCase();
-  if (lower.includes('maddy') || lower.includes('dutch') || lower.includes('remember') || lower.includes('remind')) {
-    renderLog();
-  }
 }
 
 function handleKey(e) {
@@ -1727,7 +1822,6 @@ const DEEP_TRIGGERS = [
 
 let currentModel = 'sonnet';
 let deepModeNext = false;
-let modelMenuOpen = false;
 
 function getActiveModel(msg) {
   // 1. Manual deep mode (one-shot)
@@ -1839,14 +1933,16 @@ async function callClaude(userMsg, systemOverride) {
 function parseChatActions(text) {
   if (!text) return;
   let logged = 0;
+  const seen = new Set(); // dedup by normalized text
 
   const logMatches = text.matchAll(/\[LOG:(\w+):([^\]]+)\]/g);
   for (const m of logMatches) {
     const tag = m[1].toLowerCase();
     const noteText = m[2].trim();
-    if (['general','maddy','dutch','work','event'].includes(tag) && noteText) {
-      const note = { id: Date.now() + logged, tag, text: noteText, date: null, ts: new Date().toISOString(), isDone: false };
-      notes.unshift(note);
+    const key = noteText.toLowerCase().replace(/[^a-z0-9]/g,'');
+    if (['general','maddy','dutch','work'].includes(tag) && noteText && !seen.has(key)) {
+      seen.add(key);
+      notes.unshift({ id: Date.now() + logged, tag, text: noteText, date: null, ts: new Date().toISOString() });
       logged++;
     }
   }
@@ -1855,15 +1951,29 @@ function parseChatActions(text) {
   for (const m of eventMatches) {
     const date = m[1];
     const eventText = m[2].trim();
-    if (date && eventText) {
+    const key = eventText.toLowerCase().replace(/[^a-z0-9]/g,'');
+    if (date && eventText && !seen.has(key)) {
+      seen.add(key);
       events.push({ id: Date.now() + logged + 100, date, text: eventText, ts: new Date().toISOString() });
       logged++;
     }
   }
 
+  const draftMatches = text.matchAll(/\[DRAFT:([^:]*):([^:]*):([^\]]+)\]/g);
+  for (const m of draftMatches) {
+    const to = m[1].trim();
+    const subject = m[2].trim();
+    const body = m[3].trim();
+    if (subject || body) {
+      const drafts = getDrafts();
+      drafts.unshift({ id: Date.now() + logged + 200, to, subject, body, ts: new Date().toISOString() });
+      saveDrafts(drafts);
+      logged++;
+    }
+  }
+
   if (logged > 0) {
-    saveNotes();
-    saveEvents();
+    if (notes.length || events.length) { saveNotes(); saveEvents(); }
     renderLog();
     showToast(`Logged ${logged} item${logged > 1 ? 's' : ''} to memory`);
   }
@@ -1871,7 +1981,7 @@ function parseChatActions(text) {
 
 function stripLogCommands(text) {
   if (!text) return '';
-  return text.replace(/\[LOG:\w+:[^\]]+\]/g, '').replace(/\[EVENT:\d{4}-\d{2}-\d{2}:[^\]]+\]/g, '').trim();
+  return text.replace(/\[LOG:\w+:[^\]]+\]/g, '').replace(/\[EVENT:\d{4}-\d{2}-\d{2}:[^\]]+\]/g, '').replace(/\[DRAFT:[^\]]+\]/g, '').trim();
 }
 
 // =============================================================
