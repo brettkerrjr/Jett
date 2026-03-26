@@ -497,6 +497,21 @@ select.finput { appearance:none; cursor:pointer; }
 .deep-btn:hover { background:rgba(192,132,252,0.12); border-color:var(--accent4); }
 .deep-btn.active { background:rgba(192,132,252,0.15); border-color:var(--accent4); box-shadow:0 0 14px rgba(192,132,252,0.2); }
 
+/* ---- QUICK ACTION CHIPS ---- */
+.quick-actions {
+  flex-shrink:0; display:flex; gap:6px; padding:4px 14px 2px;
+  overflow-x:auto; -webkit-overflow-scrolling:touch;
+}
+.quick-actions::-webkit-scrollbar { display:none; }
+.qa-chip {
+  flex-shrink:0; padding:5px 12px; border-radius:14px;
+  border:1px solid var(--border); background:var(--surface);
+  color:var(--text-dim); cursor:pointer;
+  font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px;
+  transition:all 0.2s; white-space:nowrap; -webkit-tap-highlight-color:transparent;
+}
+.qa-chip:active,.qa-chip:hover { border-color:var(--accent); color:var(--accent); background:rgba(0,200,255,0.06); }
+
 /* ---- DRIVE MODE ---- */
 #drive-overlay {
   display:none;
@@ -690,18 +705,6 @@ select.finput { appearance:none; cursor:pointer; }
   <button onclick="document.getElementById('update-banner').classList.remove('show')" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;line-height:1">✕</button>
 </div>
 
-<!-- EXPORT MODAL -->
-<div class="modal-overlay" id="export-modal">
-  <div class="modal-box">
-    <div class="modal-title">Export Data</div>
-    <div class="modal-body">Download all Jett data — notes, events, conversation history, and settings — as a JSON file. You can import this later to restore your data.</div>
-    <div class="modal-actions">
-      <button class="btn btn-blue" onclick="exportData()">Download JSON</button>
-      <button class="btn btn-red" onclick="closeModal('export-modal')" style="background:none">Cancel</button>
-    </div>
-  </div>
-</div>
-
 <!-- IMPORT MODAL -->
 <div class="modal-overlay" id="import-modal">
   <div class="modal-box">
@@ -758,7 +761,7 @@ select.finput { appearance:none; cursor:pointer; }
   <header>
     <div>
       <div class="logo">JETT</div>
-      <div class="logo-sub">Personal AI · v5 · Brett's System</div>
+      <div class="logo-sub">Personal AI · v6 · Brett's System</div>
     </div>
     <div class="header-right">
       <div class="header-top-row">
@@ -776,7 +779,7 @@ select.finput { appearance:none; cursor:pointer; }
   </header>
 
   <div id="install-banner">
-    📱 Add to iPhone: Share → "Add to Home Screen"
+    Add to iPhone: Share → "Add to Home Screen" for offline access
     <button onclick="document.getElementById('install-banner').style.display='none'">×</button>
   </div>
 
@@ -801,6 +804,14 @@ select.finput { appearance:none; cursor:pointer; }
         </svg>
       </div>
       <div class="orb-label" id="orb-lbl">tap to speak</div>
+    </div>
+
+    <div class="quick-actions" id="quick-actions">
+      <button class="qa-chip" onclick="sendQuick('Give me my morning briefing')">Morning briefing</button>
+      <button class="qa-chip" onclick="sendQuick('How are NG markets looking today?')">NG markets</button>
+      <button class="qa-chip" onclick="sendQuick('What\'s on my radar this week?')">My radar</button>
+      <button class="qa-chip" onclick="sendQuick('Dutch food check — is it time to hit HEB?')">Dutch</button>
+      <button class="qa-chip" onclick="sendQuick('Anything I should know about today?')">Today</button>
     </div>
 
     <div class="input-bar">
@@ -908,7 +919,10 @@ select.finput { appearance:none; cursor:pointer; }
 
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span style="font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:3px;color:var(--text-dim)">DAILY BRIEFING</span>
-        <button class="refresh-btn" onclick="loadBriefing()">↻ REFRESH</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span id="brief-ts" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted)"></span>
+          <button class="refresh-btn" onclick="loadBriefing()">↻ REFRESH</button>
+        </div>
       </div>
 
       <div class="card card-accent-blue">
@@ -1076,7 +1090,7 @@ select.finput { appearance:none; cursor:pointer; }
         <div class="card-header" style="color:var(--danger)">◈ System</div>
         <div class="card-body">
           <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);line-height:2">
-            <div>JETT v5.6 — Brett's System</div>
+            <div>JETT v6.0 — Brett's System</div>
             <div>ENGINE: Claude Sonnet + Opus (hybrid)</div>
             <div>STORAGE: Device localStorage only</div>
             <div id="sys-size">DATA: Calculating...</div>
@@ -1361,21 +1375,41 @@ window.onload = () => {
 
 function initWelcome() {
   const c = document.getElementById('chat-messages');
-  // System message
   const sys = document.createElement('div');
   sys.className = 'msg system';
-  sys.innerHTML = '<div class="bubble">JETT v5.6 · Opus + Sonnet hybrid · EIA v2 + Equity feeds · Service Worker cache</div>';
+  sys.innerHTML = '<div class="bubble">JETT v6 · Sonnet + Opus hybrid · EIA + Equity · Drive Mode · SW cache</div>';
   c.appendChild(sys);
 
   if (history.length > 0) {
-    // Restore chat from history
     history.slice(-40).forEach(m => {
       if (m.role !== 'system') appendMsg(m.role==='user'?'user':'assistant', m.content, false, m.model || 'sonnet');
     });
+    // Hide chips when there's already a conversation
+    const qa = document.getElementById('quick-actions');
+    if (qa) qa.style.display = 'none';
   } else {
-    // Fresh welcome
-    appendMsg('assistant', "Good to have you back, Brett. v5 is live — token tracking, chat-to-log, full hybrid routing. Talk to me, or ask for your morning briefing to kick things off.", false, 'sonnet');
+    const hour = new Date().getHours();
+    const tod = hour < 5 ? 'night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+    const dc = getDutchConfig();
+    const dutchDays = dc.lastCheck ? Math.floor((Date.now()-new Date(dc.lastCheck))/86400000) : 999;
+    const dutchDue = dutchDays >= (dc.interval || 5);
+    const soonEvents = events.filter(e => daysUntil(e.date) >= 0 && daysUntil(e.date) <= 2);
+
+    let msg = `Good ${tod}, Brett.`;
+    if (dutchDue) msg += ` Dutch food check is ${dutchDays === 999 ? 'overdue — no record of last check' : `${dutchDays} days overdue`}. Worth swinging by HEB.`;
+    if (soonEvents.length) msg += ` Heads up — ${soonEvents[0].text} is coming up ${daysUntil(soonEvents[0].date) === 0 ? 'today' : daysUntil(soonEvents[0].date) === 1 ? 'tomorrow' : 'in '+daysUntil(soonEvents[0].date)+' days'}.`;
+    if (!dutchDue && !soonEvents.length) msg += ` v6 running clean — SW cache active, data persists across updates.`;
+    msg += ` What do you need?`;
+
+    appendMsg('assistant', msg, false, 'sonnet');
   }
+}
+
+function sendQuick(text) {
+  document.getElementById('txtInput').value = text;
+  const qa = document.getElementById('quick-actions');
+  if (qa) qa.style.display = 'none';
+  sendMsg();
 }
 
 function startClock() {
@@ -1552,7 +1586,7 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 // Share via Web Share API (iOS → Save to Files/iCloud) or fallback to download
 async function shareOrExport() {
   const data = {
-    version: 'jett_v5',
+    version: 'jett_v6',
     exported: new Date().toISOString(),
     notes, events, history,
     drafts: getDrafts(),
@@ -1584,26 +1618,6 @@ async function shareOrExport() {
   showToast('Data exported');
 }
 
-function exportData() {
-  const data = {
-    version: 'jett_v5',
-    exported: new Date().toISOString(),
-    notes, events, history,
-    drafts: getDrafts(),
-    settings: getSettings(),
-    dutch: getDutchConfig(),
-    tokens: getTokenUsage(),
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `jett_backup_${new Date().toISOString().split('T')[0]}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  closeModal('export-modal');
-  showToast('Data exported');
-}
 
 function importData(input) {
   const file = input.files[0];
@@ -1925,6 +1939,9 @@ async function sendMsg(txt) {
   const msg = txt || input.value.trim();
   if (!msg) return;
   input.value = ''; input.style.height = 'auto';
+  // Hide quick-action chips after first send
+  const qa = document.getElementById('quick-actions');
+  if (qa) qa.style.display = 'none';
   appendMsg('user', msg);
   showTyping();
   const reply = await callClaude(msg);
@@ -2275,6 +2292,8 @@ function speakChunked(text) {
 // BRIEFING
 // =============================================================
 async function loadBriefing() {
+  const ts = document.getElementById('brief-ts');
+  if (ts) ts.textContent = 'loading...';
   renderRadar();
   const [weatherData, commodityData, energyData, stockData] = await Promise.allSettled([
     loadWeather(),
@@ -2284,6 +2303,8 @@ async function loadBriefing() {
   ]);
   const mkt = buildMarketContext(commodityData, energyData, stockData);
   loadAIBriefing(mkt);
+  const ts2 = document.getElementById('brief-ts');
+  if (ts2) ts2.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false});
 }
 
 function buildMarketContext(commodityResult, energyResult, stockResult) {
