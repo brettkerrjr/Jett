@@ -452,6 +452,19 @@ select.finput { appearance:none; cursor:pointer; }
 }
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
+/* ---- UPDATE BANNER ---- */
+#update-banner {
+  display:none; position:fixed; bottom:72px; left:50%; transform:translateX(-50%);
+  background:var(--panel); border:1px solid var(--accent2); color:var(--accent2);
+  padding:10px 18px; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px;
+  border-radius:20px; z-index:999; align-items:center; gap:12px; white-space:nowrap;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  box-shadow:0 4px 20px rgba(0,0,0,0.5);
+  animation: slideUp 0.4s ease;
+}
+#update-banner.show { display:flex; }
+@keyframes slideUp { from{opacity:0;transform:translateX(-50%) translateY(10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
 /* ---- INSTALL BANNER ---- */
 #install-banner {
   margin:10px 14px 0; padding:8px 12px;
@@ -671,6 +684,11 @@ select.finput { appearance:none; cursor:pointer; }
 <div class="hud-corner bl"></div>
 <div class="hud-corner br"></div>
 <div id="toast"></div>
+<div id="update-banner">
+  ▲ Update available — your data is safe
+  <button onclick="applyUpdate()" style="background:var(--accent2);color:#000;border:none;padding:4px 12px;border-radius:10px;font-family:'Share Tech Mono',monospace;font-size:10px;cursor:pointer;font-weight:700">APPLY</button>
+  <button onclick="document.getElementById('update-banner').classList.remove('show')" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;line-height:1">✕</button>
+</div>
 
 <!-- EXPORT MODAL -->
 <div class="modal-overlay" id="export-modal">
@@ -1044,23 +1062,12 @@ select.finput { appearance:none; cursor:pointer; }
         </div>
       </div>
 
-      <div class="card card-accent-green">
-        <div class="card-header">◈ Local File Sync</div>
-        <div class="card-body">
-          <div class="api-status" id="file-sync-status"><div class="dot"></div><span id="file-sync-txt">No file linked</span></div>
-          <div class="hint" style="margin-top:8px;margin-bottom:10px">Link a JSON file on your PC. Jett auto-syncs all data to it on every save — open from any browser and import that file to restore. Chrome/Edge only.</div>
-          <button class="btn btn-green" onclick="linkLocalFile()" id="file-link-btn">▶ LINK LOCAL FILE</button>
-          <button class="btn btn-blue" onclick="readFromLinkedFile()" id="file-load-btn" style="display:none">↓ LOAD FROM FILE</button>
-          <button class="btn" onclick="unlinkLocalFile()" id="file-unlink-btn" style="display:none;background:rgba(255,56,96,0.15);color:var(--danger);border-color:var(--danger)">× UNLINK FILE</button>
-        </div>
-      </div>
-
       <div class="card card-accent-blue">
         <div class="card-header">◈ Data Management</div>
         <div class="card-body">
-          <div class="hint" style="margin-top:0;margin-bottom:10px">Export your Jett data as a backup or transfer to another device. Import a previously exported file to restore.</div>
-          <button class="btn btn-blue" onclick="openModal('export-modal')">▶ EXPORT ALL DATA</button>
-          <button class="btn btn-green" onclick="openModal('import-modal')">▶ IMPORT DATA</button>
+          <div class="hint" style="margin-top:0;margin-bottom:12px">Back up your data before switching browsers or devices. On iPhone, use <strong style="color:var(--accent)">Save to Files</strong> to store to iCloud — then Import on the new instance.</div>
+          <button class="btn btn-blue" onclick="shareOrExport()">▶ EXPORT / SAVE TO FILES</button>
+          <button class="btn btn-green" onclick="openModal('import-modal')" style="margin-top:6px">▶ IMPORT DATA</button>
           <button class="btn btn-blue" onclick="clearChatHistory()" style="margin-top:12px">↻ CLEAR CHAT HISTORY</button>
         </div>
       </div>
@@ -1069,7 +1076,7 @@ select.finput { appearance:none; cursor:pointer; }
         <div class="card-header" style="color:var(--danger)">◈ System</div>
         <div class="card-body">
           <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);line-height:2">
-            <div>JETT v5.5 — Brett's System</div>
+            <div>JETT v5.6 — Brett's System</div>
             <div>ENGINE: Claude Sonnet + Opus (hybrid)</div>
             <div>STORAGE: Device localStorage only</div>
             <div id="sys-size">DATA: Calculating...</div>
@@ -1343,10 +1350,8 @@ window.onload = () => {
   if (key) { document.getElementById('api-key').value = key; setKeyStatus(true); }
   const eiaKey = localStorage.getItem('jett_eia_key');
   if (eiaKey) { document.getElementById('eia-key').value = eiaKey; setEiaKeyStatus(true); }
-  // Init local file sync
-  initFileSync();
-  // Flush data to linked file on page hide (tab close / app switch)
-  window.addEventListener('pagehide', () => { writeToLinkedFile(); });
+  // Register service worker for offline cache + update detection
+  registerSW();
   // Init battery + token budget
   updateBattery();
   const tu = getTokenUsage();
@@ -1359,7 +1364,7 @@ function initWelcome() {
   // System message
   const sys = document.createElement('div');
   sys.className = 'msg system';
-  sys.innerHTML = '<div class="bubble">JETT v5.5 · Opus + Sonnet hybrid · EIA v2 + Equity feeds · Local file sync</div>';
+  sys.innerHTML = '<div class="bubble">JETT v5.6 · Opus + Sonnet hybrid · EIA v2 + Equity feeds · Service Worker cache</div>';
   c.appendChild(sys);
 
   if (history.length > 0) {
@@ -1402,13 +1407,12 @@ function loadStorage() {
   }
 }
 
-function saveNotes() { localStorage.setItem('jett_notes', JSON.stringify(notes)); updateSysInfo(); scheduleFileSync(); }
-function saveEvents() { localStorage.setItem('jett_events', JSON.stringify(events)); updateSysInfo(); scheduleFileSync(); }
+function saveNotes() { localStorage.setItem('jett_notes', JSON.stringify(notes)); updateSysInfo(); }
+function saveEvents() { localStorage.setItem('jett_events', JSON.stringify(events)); updateSysInfo(); }
 function saveHistory() {
   // Keep max 60 messages persisted
   const toSave = history.slice(-60);
   localStorage.setItem('jett_history', JSON.stringify(toSave));
-  scheduleFileSync();
 }
 
 function getSettings() {
@@ -1502,192 +1506,40 @@ function updateSysInfo() {
 }
 
 // =============================================================
-// LOCAL FILE SYNC (File System Access API — Chrome/Edge)
+// SERVICE WORKER + UPDATE
 // =============================================================
-let _fileSyncTimer = null;
+function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('./sw.js')
+    .then(reg => {
+      // Check for update right away
+      reg.update();
+      // New SW found while page is open
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+            showUpdateBanner();
+          }
+        });
+      });
+    })
+    .catch(e => console.warn('SW registration failed:', e));
 
-function scheduleFileSync() {
-  clearTimeout(_fileSyncTimer);
-  _fileSyncTimer = setTimeout(writeToLinkedFile, 2000);
-}
-
-function isFSASupported() {
-  return 'showSaveFilePicker' in window || 'showOpenFilePicker' in window;
-}
-
-// IndexedDB helpers to persist file handle across sessions
-function openHandleDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('jett_fs', 1);
-    req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
-    req.onsuccess = e => resolve(e.target.result);
-    req.onerror = () => reject(req.error);
+  // When new SW takes control, reload to get fresh assets
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) { refreshing = true; window.location.reload(); }
   });
 }
 
-async function saveFileHandleToIDB(handle) {
-  try {
-    const db = await openHandleDB();
-    const tx = db.transaction('handles', 'readwrite');
-    tx.objectStore('handles').put(handle, 'dataFile');
-    await new Promise(r => { tx.oncomplete = r; tx.onerror = r; });
-    db.close();
-  } catch(e) {}
+function showUpdateBanner() {
+  document.getElementById('update-banner').classList.add('show');
 }
 
-async function getFileHandleFromIDB() {
-  try {
-    const db = await openHandleDB();
-    const tx = db.transaction('handles', 'readonly');
-    const req = tx.objectStore('handles').get('dataFile');
-    const handle = await new Promise(r => { req.onsuccess = () => r(req.result); req.onerror = () => r(null); });
-    db.close();
-    return handle || null;
-  } catch(e) { return null; }
-}
-
-async function clearFileHandleFromIDB() {
-  try {
-    const db = await openHandleDB();
-    const tx = db.transaction('handles', 'readwrite');
-    tx.objectStore('handles').delete('dataFile');
-    db.close();
-  } catch(e) {}
-}
-
-async function checkFilePermission(handle, mode = 'readwrite') {
-  const opts = { mode };
-  if ((await handle.queryPermission(opts)) === 'granted') return true;
-  if ((await handle.requestPermission(opts)) === 'granted') return true;
-  return false;
-}
-
-function buildSyncPayload() {
-  return {
-    version: 'jett_v5',
-    synced: new Date().toISOString(),
-    notes, events,
-    history: history.slice(-60),
-    drafts: getDrafts(),
-    settings: getSettings(),
-    dutch: getDutchConfig(),
-    tokens: getTokenUsage(),
-  };
-}
-
-async function writeToLinkedFile() {
-  const handle = await getFileHandleFromIDB();
-  if (!handle) return;
-  try {
-    const perm = await checkFilePermission(handle, 'readwrite');
-    if (!perm) { setFileSyncStatus('err', 'Permission denied — tap Link Local File again'); return; }
-    const writable = await handle.createWritable();
-    await writable.write(JSON.stringify(buildSyncPayload(), null, 2));
-    await writable.close();
-    setFileSyncStatus('ok', `Synced · ${handle.name} · ${new Date().toLocaleTimeString()}`);
-  } catch(e) {
-    setFileSyncStatus('err', 'Write failed: ' + e.message);
-    console.error('File sync write error:', e);
-  }
-}
-
-async function readFromLinkedFile() {
-  const handle = await getFileHandleFromIDB();
-  if (!handle) { showToast('No file linked'); return; }
-  if (!await checkFilePermission(handle, 'read')) {
-    setFileSyncStatus('err', 'Permission denied');
-    showToast('Permission denied');
-    return;
-  }
-  try {
-    const file = await handle.getFile();
-    const text = await file.text();
-    const data = JSON.parse(text);
-    applyImportedData(data);
-    setFileSyncStatus('ok', `Loaded · ${handle.name}`);
-    showToast('Data loaded from file');
-    setTimeout(() => location.reload(), 800);
-  } catch(e) {
-    showToast('Could not read file');
-  }
-}
-
-function applyImportedData(data) {
-  if (data.notes && Array.isArray(data.notes)) {
-    const ids = new Set(notes.map(n => n.id));
-    notes = [...data.notes.filter(n => !ids.has(n.id)), ...notes];
-    saveNotes();
-  }
-  if (data.events && Array.isArray(data.events)) {
-    const ids = new Set(events.map(e => e.id));
-    events = [...data.events.filter(e => !ids.has(e.id)), ...events];
-    saveEvents();
-  }
-  if (data.history && Array.isArray(data.history)) {
-    history = data.history.slice(-60);
-    localStorage.setItem('jett_history', JSON.stringify(history));
-  }
-  if (data.drafts) saveDrafts(data.drafts);
-  if (data.settings) localStorage.setItem('jett_settings', JSON.stringify(data.settings));
-  if (data.dutch) localStorage.setItem('jett_dutch', JSON.stringify(data.dutch));
-  if (data.tokens) localStorage.setItem('jett_tokens', JSON.stringify(data.tokens));
-}
-
-async function linkLocalFile() {
-  if (!isFSASupported()) {
-    showToast('Not supported — use Chrome or Edge on PC');
-    return;
-  }
-  try {
-    const handle = await window.showSaveFilePicker({
-      suggestedName: 'jett_data.json',
-      types: [{ description: 'Jett Data', accept: { 'application/json': ['.json'] } }],
-    });
-    await saveFileHandleToIDB(handle);
-    setFileSyncStatus('ok', `Linked · ${handle.name}`);
-    updateFileSyncButtons(true);
-    showToast('File linked — writing now');
-    await writeToLinkedFile();
-  } catch(e) {
-    if (e.name === 'AbortError') return;
-    showToast('Link failed: ' + e.message);
-    console.error('File link error:', e);
-  }
-}
-
-async function unlinkLocalFile() {
-  await clearFileHandleFromIDB();
-  setFileSyncStatus('', 'No file linked');
-  updateFileSyncButtons(false);
-  showToast('File unlinked');
-}
-
-function setFileSyncStatus(state, text) {
-  const el = document.getElementById('file-sync-status');
-  if (!el) return;
-  el.className = 'api-status' + (state ? ' ' + state : '');
-  document.getElementById('file-sync-txt').textContent = text;
-}
-
-function updateFileSyncButtons(linked) {
-  const linkBtn   = document.getElementById('file-link-btn');
-  const loadBtn   = document.getElementById('file-load-btn');
-  const unlinkBtn = document.getElementById('file-unlink-btn');
-  if (!linkBtn) return;
-  linkBtn.style.display   = linked ? 'none'  : '';
-  loadBtn.style.display   = linked ? ''      : 'none';
-  unlinkBtn.style.display = linked ? ''      : 'none';
-}
-
-async function initFileSync() {
-  if (!isFSASupported()) return;
-  const handle = await getFileHandleFromIDB();
-  if (!handle) return;
-  setFileSyncStatus('ok', `Linked · ${handle.name} — tap Load to sync`);
-  updateFileSyncButtons(true);
-  // Flush to file when user navigates away or switches apps
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') writeToLinkedFile();
+function applyUpdate() {
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if (reg?.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
   });
 }
 
@@ -1696,6 +1548,41 @@ async function initFileSync() {
 // =============================================================
 function openModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// Share via Web Share API (iOS → Save to Files/iCloud) or fallback to download
+async function shareOrExport() {
+  const data = {
+    version: 'jett_v5',
+    exported: new Date().toISOString(),
+    notes, events, history,
+    drafts: getDrafts(),
+    settings: getSettings(),
+    dutch: getDutchConfig(),
+    tokens: getTokenUsage(),
+  };
+  const json = JSON.stringify(data, null, 2);
+  const fileName = `jett_backup_${new Date().toISOString().split('T')[0]}.json`;
+
+  // Try Web Share API with file (iOS 15+, allows Save to Files / iCloud)
+  if (navigator.canShare) {
+    try {
+      const file = new File([json], fileName, { type: 'application/json' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Jett Backup' });
+        return;
+      }
+    } catch(e) {
+      if (e.name === 'AbortError') return; // user dismissed share sheet
+    }
+  }
+  // Desktop fallback: trigger download
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fileName; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Data exported');
+}
 
 function exportData() {
   const data = {
