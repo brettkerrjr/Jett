@@ -1039,6 +1039,17 @@ select.finput { appearance:none; cursor:pointer; }
         </div>
       </div>
 
+      <div class="card card-accent-green">
+        <div class="card-header">◈ Local File Sync</div>
+        <div class="card-body">
+          <div class="api-status" id="file-sync-status"><div class="dot"></div><span id="file-sync-txt">No file linked</span></div>
+          <div class="hint" style="margin-top:8px;margin-bottom:10px">Link a JSON file on your PC. Jett auto-syncs all data to it on every save — open from any browser and import that file to restore. Chrome/Edge only.</div>
+          <button class="btn btn-green" onclick="linkLocalFile()" id="file-link-btn">▶ LINK LOCAL FILE</button>
+          <button class="btn btn-blue" onclick="readFromLinkedFile()" id="file-load-btn" style="display:none">↓ LOAD FROM FILE</button>
+          <button class="btn" onclick="unlinkLocalFile()" id="file-unlink-btn" style="display:none;background:rgba(255,56,96,0.15);color:var(--danger);border-color:var(--danger)">× UNLINK FILE</button>
+        </div>
+      </div>
+
       <div class="card card-accent-blue">
         <div class="card-header">◈ Data Management</div>
         <div class="card-body">
@@ -1324,6 +1335,8 @@ window.onload = () => {
   if (key) { document.getElementById('api-key').value = key; setKeyStatus(true); }
   const eiaKey = localStorage.getItem('jett_eia_key');
   if (eiaKey) { document.getElementById('eia-key').value = eiaKey; setEiaKeyStatus(true); }
+  // Init local file sync
+  initFileSync();
   // Init battery + token budget
   updateBattery();
   const tu = getTokenUsage();
@@ -1379,12 +1392,13 @@ function loadStorage() {
   }
 }
 
-function saveNotes() { localStorage.setItem('jett_notes', JSON.stringify(notes)); updateSysInfo(); }
-function saveEvents() { localStorage.setItem('jett_events', JSON.stringify(events)); updateSysInfo(); }
+function saveNotes() { localStorage.setItem('jett_notes', JSON.stringify(notes)); updateSysInfo(); scheduleFileSync(); }
+function saveEvents() { localStorage.setItem('jett_events', JSON.stringify(events)); updateSysInfo(); scheduleFileSync(); }
 function saveHistory() {
   // Keep max 60 messages persisted
   const toSave = history.slice(-60);
   localStorage.setItem('jett_history', JSON.stringify(toSave));
+  scheduleFileSync();
 }
 
 function getSettings() {
@@ -1475,6 +1489,193 @@ function updateSysInfo() {
     document.getElementById('sys-msgs').textContent = `MESSAGES: ${history.length}`;
     document.getElementById('sys-notes').textContent = `NOTES: ${notes.length} · EVENTS: ${events.length} · DRAFTS: ${getDrafts().length}`;
   } catch(e) {}
+}
+
+// =============================================================
+// LOCAL FILE SYNC (File System Access API — Chrome/Edge)
+// =============================================================
+let _fileSyncTimer = null;
+
+function scheduleFileSync() {
+  clearTimeout(_fileSyncTimer);
+  _fileSyncTimer = setTimeout(writeToLinkedFile, 2000);
+}
+
+function isFSASupported() {
+  return 'showSaveFilePicker' in window || 'showOpenFilePicker' in window;
+}
+
+// IndexedDB helpers to persist file handle across sessions
+function openHandleDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('jett_fs', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveFileHandleToIDB(handle) {
+  try {
+    const db = await openHandleDB();
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(handle, 'dataFile');
+    await new Promise(r => { tx.oncomplete = r; tx.onerror = r; });
+    db.close();
+  } catch(e) {}
+}
+
+async function getFileHandleFromIDB() {
+  try {
+    const db = await openHandleDB();
+    const tx = db.transaction('handles', 'readonly');
+    const req = tx.objectStore('handles').get('dataFile');
+    const handle = await new Promise(r => { req.onsuccess = () => r(req.result); req.onerror = () => r(null); });
+    db.close();
+    return handle || null;
+  } catch(e) { return null; }
+}
+
+async function clearFileHandleFromIDB() {
+  try {
+    const db = await openHandleDB();
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').delete('dataFile');
+    db.close();
+  } catch(e) {}
+}
+
+async function checkFilePermission(handle, mode = 'readwrite') {
+  const opts = { mode };
+  if ((await handle.queryPermission(opts)) === 'granted') return true;
+  if ((await handle.requestPermission(opts)) === 'granted') return true;
+  return false;
+}
+
+function buildSyncPayload() {
+  return {
+    version: 'jett_v5',
+    synced: new Date().toISOString(),
+    notes, events,
+    history: history.slice(-60),
+    drafts: getDrafts(),
+    settings: getSettings(),
+    dutch: getDutchConfig(),
+    tokens: getTokenUsage(),
+  };
+}
+
+async function writeToLinkedFile() {
+  const handle = await getFileHandleFromIDB();
+  if (!handle) return;
+  if (!await checkFilePermission(handle, 'readwrite')) {
+    setFileSyncStatus('err', 'Permission denied — relink file');
+    return;
+  }
+  try {
+    const writable = await handle.createWritable();
+    await writable.write(JSON.stringify(buildSyncPayload(), null, 2));
+    await writable.close();
+    setFileSyncStatus('ok', `Synced · ${handle.name} · ${new Date().toLocaleTimeString()}`);
+  } catch(e) {
+    setFileSyncStatus('err', 'Write failed — ' + e.message);
+  }
+}
+
+async function readFromLinkedFile() {
+  const handle = await getFileHandleFromIDB();
+  if (!handle) { showToast('No file linked'); return; }
+  if (!await checkFilePermission(handle, 'read')) {
+    setFileSyncStatus('err', 'Permission denied');
+    showToast('Permission denied');
+    return;
+  }
+  try {
+    const file = await handle.getFile();
+    const text = await file.text();
+    const data = JSON.parse(text);
+    applyImportedData(data);
+    setFileSyncStatus('ok', `Loaded · ${handle.name}`);
+    showToast('Data loaded from file');
+    setTimeout(() => location.reload(), 800);
+  } catch(e) {
+    showToast('Could not read file');
+  }
+}
+
+function applyImportedData(data) {
+  if (data.notes && Array.isArray(data.notes)) {
+    const ids = new Set(notes.map(n => n.id));
+    notes = [...data.notes.filter(n => !ids.has(n.id)), ...notes];
+    saveNotes();
+  }
+  if (data.events && Array.isArray(data.events)) {
+    const ids = new Set(events.map(e => e.id));
+    events = [...data.events.filter(e => !ids.has(e.id)), ...events];
+    saveEvents();
+  }
+  if (data.history && Array.isArray(data.history)) {
+    history = data.history.slice(-60);
+    localStorage.setItem('jett_history', JSON.stringify(history));
+  }
+  if (data.drafts) saveDrafts(data.drafts);
+  if (data.settings) localStorage.setItem('jett_settings', JSON.stringify(data.settings));
+  if (data.dutch) localStorage.setItem('jett_dutch', JSON.stringify(data.dutch));
+  if (data.tokens) localStorage.setItem('jett_tokens', JSON.stringify(data.tokens));
+}
+
+async function linkLocalFile() {
+  if (!isFSASupported()) {
+    showToast('Not supported — use Chrome or Edge on PC');
+    return;
+  }
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: 'jett_data.json',
+      types: [{ description: 'Jett Data', accept: { 'application/json': ['.json'] } }],
+    });
+    await saveFileHandleToIDB(handle);
+    setFileSyncStatus('ok', `Linked · ${handle.name}`);
+    updateFileSyncButtons(true);
+    showToast('File linked — syncing now');
+    await writeToLinkedFile();
+  } catch(e) {
+    if (e.name !== 'AbortError') showToast('Could not link file');
+  }
+}
+
+async function unlinkLocalFile() {
+  await clearFileHandleFromIDB();
+  setFileSyncStatus('', 'No file linked');
+  updateFileSyncButtons(false);
+  showToast('File unlinked');
+}
+
+function setFileSyncStatus(state, text) {
+  const el = document.getElementById('file-sync-status');
+  if (!el) return;
+  el.className = 'api-status' + (state ? ' ' + state : '');
+  document.getElementById('file-sync-txt').textContent = text;
+}
+
+function updateFileSyncButtons(linked) {
+  const linkBtn   = document.getElementById('file-link-btn');
+  const loadBtn   = document.getElementById('file-load-btn');
+  const unlinkBtn = document.getElementById('file-unlink-btn');
+  if (!linkBtn) return;
+  linkBtn.style.display   = linked ? 'none'  : '';
+  loadBtn.style.display   = linked ? ''      : 'none';
+  unlinkBtn.style.display = linked ? ''      : 'none';
+}
+
+async function initFileSync() {
+  if (!isFSASupported()) return;
+  const handle = await getFileHandleFromIDB();
+  if (!handle) return;
+  // Don't auto-request permission on load (requires user gesture)
+  // Just show linked status; user can tap "Load from File" to pull data
+  setFileSyncStatus('ok', `Linked · ${handle.name} — tap Load to sync`);
+  updateFileSyncButtons(true);
 }
 
 // =============================================================
