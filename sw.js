@@ -1,6 +1,6 @@
 // Jett Service Worker
 // Increment VERSION on every deploy — triggers update banner in the app
-const VERSION = 'jett-6.9';
+const VERSION = 'jett-7.0';
 const CACHE   = 'jett-cache-' + VERSION;
 
 // ── Install: cache the app shell ─────────────────────────────────────────────

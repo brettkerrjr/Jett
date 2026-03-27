@@ -982,6 +982,7 @@ select.finput { appearance:none; cursor:pointer; }
           </div>
           <div class="hint">Keeps your Anthropic key off-device. Deploy <code>worker/</code> to Cloudflare, set <code>ANTHROPIC_KEY</code> + <code>JETT_TOKEN</code> as secrets.</div>
           <button class="btn btn-green" onclick="saveProxy()">▶ SAVE PROXY</button>
+          <button class="btn btn-orange" onclick="clearProxy()" style="margin-top:4px">✕ CLEAR PROXY</button>
         </div>
       </div>
 
@@ -1128,7 +1129,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '6.9';
+const APP_VERSION = '7.0';
 let history = [];
 let notes = [];
 let events = [];
@@ -1507,7 +1508,16 @@ function saveProxy() {
   if (!url.startsWith('https://')) { showToast('URL must start with https://'); return; }
   localStorage.setItem('jett_proxy_url', url);
   localStorage.setItem('jett_proxy_token', token);
-  setProxyStatus(true); showToast('Proxy saved — API key no longer needed');
+  setProxyStatus(true);
+  showToast(`Proxy saved — token: "${token}"`);
+}
+function clearProxy() {
+  localStorage.removeItem('jett_proxy_url');
+  localStorage.removeItem('jett_proxy_token');
+  document.getElementById('proxy-url').value = '';
+  document.getElementById('proxy-token').value = '';
+  setProxyStatus(false);
+  showToast('Proxy cleared');
 }
 function setProxyStatus(ok) {
   const el = document.getElementById('proxy-status');
