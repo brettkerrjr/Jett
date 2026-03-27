@@ -1012,25 +1012,20 @@ select.finput { appearance:none; cursor:pointer; }
       </div>
 
       <div class="card card-accent-blue">
-        <div class="card-header">◈ Token Budget</div>
+        <div class="card-header">◈ API Budget</div>
         <div class="card-body">
           <div class="field">
-            <label class="flabel">Monthly Token Limit</label>
-            <select class="finput" id="token-limit">
-              <option value="500000">500K tokens</option>
-              <option value="1000000" selected>1M tokens</option>
-              <option value="2000000">2M tokens</option>
-              <option value="5000000">5M tokens</option>
-              <option value="10000000">10M tokens</option>
-            </select>
+            <label class="flabel">Monthly Budget (USD)</label>
+            <input type="number" class="finput" id="token-limit" min="1" max="100" step="1" value="5" placeholder="5.00"/>
           </div>
           <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);line-height:2;margin-top:8px">
-            <div id="tokens-used-display">USED: 0 tokens</div>
-            <div id="tokens-remaining-display">REMAINING: 1,000,000 tokens</div>
+            <div id="tokens-used-display">SPENT: $0.0000</div>
+            <div id="tokens-remaining-display">REMAINING: $5.00 of $5.00</div>
             <div id="tokens-reset-display">RESETS: 1st of each month</div>
           </div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-muted);margin-top:4px">Sonnet $3/$15 · Opus $15/$75 per 1M tokens in/out</div>
           <button class="btn btn-blue" onclick="saveTokenBudget()">▶ SAVE BUDGET</button>
-          <button class="btn btn-orange" onclick="resetTokenUsage()" style="margin-top:4px">↻ RESET USAGE COUNTER</button>
+          <button class="btn btn-orange" onclick="resetTokenUsage()" style="margin-top:4px">↻ RESET USAGE</button>
         </div>
       </div>
 
@@ -1133,7 +1128,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '6.7';
+const APP_VERSION = '6.8';
 let history = [];
 let notes = [];
 let events = [];
@@ -1152,13 +1147,12 @@ function getTokenUsage() {
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
     if (data.monthKey !== monthKey) {
-      // New month — reset and immediately persist so it survives reloads
-      const reset = { used: 0, monthKey, limit: data.limit || 1000000 };
+      const reset = { monthKey, costUsd: 0, budgetUsd: data.budgetUsd || 5.00 };
       localStorage.setItem('jett_tokens', JSON.stringify(reset));
       return reset;
     }
-    return { used: data.used || 0, monthKey, limit: data.limit || 1000000 };
-  } catch(e) { return { used: 0, monthKey: '', limit: 1000000 }; }
+    return { monthKey, costUsd: data.costUsd || 0, budgetUsd: data.budgetUsd || 5.00 };
+  } catch(e) { return { monthKey: '', costUsd: 0, budgetUsd: 5.00 }; }
 }
 
 function saveTokenUsage(usage) {
@@ -1166,17 +1160,29 @@ function saveTokenUsage(usage) {
   updateBattery();
 }
 
+// Pricing: Sonnet $3/$15 per M tokens in/out — Opus $15/$75
+const PRICING = {
+  sonnet: { input: 3 / 1e6, output: 15 / 1e6 },
+  opus:   { input: 15 / 1e6, output: 75 / 1e6 },
+};
+
 function trackTokens(apiResponse) {
-  if (!apiResponse || !apiResponse.usage) return;
+  if (!apiResponse?.usage) return;
+  const model = lastModelUsed === 'opus' ? 'opus' : 'sonnet';
+  const rates = PRICING[model];
+  const cost = (apiResponse.usage.input_tokens || 0) * rates.input
+             + (apiResponse.usage.output_tokens || 0) * rates.output;
   const usage = getTokenUsage();
-  usage.used += (apiResponse.usage.input_tokens || 0) + (apiResponse.usage.output_tokens || 0);
+  usage.costUsd = Math.round((usage.costUsd + cost) * 100000) / 100000;
   saveTokenUsage(usage);
 }
 
 function updateBattery() {
   const usage = getTokenUsage();
-  const remaining = Math.max(0, usage.limit - usage.used);
-  const pct = Math.round((remaining / usage.limit) * 100);
+  const spent = usage.costUsd || 0;
+  const budget = usage.budgetUsd || 5.00;
+  const remaining = Math.max(0, budget - spent);
+  const pct = Math.round((remaining / budget) * 100);
   const fill = document.getElementById('battery-fill');
   const label = document.getElementById('battery-pct');
   if (!fill || !label) return;
@@ -1185,22 +1191,23 @@ function updateBattery() {
   label.textContent = pct + '%';
   const ud = document.getElementById('tokens-used-display');
   const rd = document.getElementById('tokens-remaining-display');
-  if (ud) ud.textContent = `USED: ${usage.used.toLocaleString()} tokens`;
-  if (rd) rd.textContent = `REMAINING: ${remaining.toLocaleString()} tokens`;
+  if (ud) ud.textContent = `SPENT: $${spent.toFixed(4)}`;
+  if (rd) rd.textContent = `REMAINING: $${remaining.toFixed(4)} of $${budget.toFixed(2)}`;
 }
 
 function getBatteryTooltip() {
   const u = getTokenUsage();
-  const rem = Math.max(0, u.limit - u.used);
-  return `${rem.toLocaleString()} tokens remaining of ${u.limit.toLocaleString()}`;
+  const rem = Math.max(0, u.budgetUsd - u.costUsd);
+  return `$${rem.toFixed(4)} remaining of $${(u.budgetUsd||5).toFixed(2)} budget`;
 }
 
 function saveTokenBudget() {
-  const limit = parseInt(document.getElementById('token-limit').value);
+  const val = parseFloat(document.getElementById('token-limit').value);
+  if (isNaN(val) || val <= 0) { showToast('Enter a valid dollar amount'); return; }
   const usage = getTokenUsage();
-  usage.limit = limit;
+  usage.budgetUsd = val;
   saveTokenUsage(usage);
-  showToast('Token budget saved');
+  showToast('Budget saved');
 }
 
 function resetTokenUsage() {
@@ -1401,7 +1408,7 @@ window.onload = () => {
   updateBattery();
   const tu = getTokenUsage();
   const tlEl = document.getElementById('token-limit');
-  if (tlEl) tlEl.value = tu.limit;
+  if (tlEl) tlEl.value = tu.budgetUsd || 5;
 };
 
 function initWelcome() {
