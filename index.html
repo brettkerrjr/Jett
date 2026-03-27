@@ -969,15 +969,32 @@ select.finput { appearance:none; cursor:pointer; }
     <div class="scroll-body">
 
       <div class="card card-accent-green">
-        <div class="card-header">◈ API Key</div>
+        <div class="card-header">◈ Proxy (Recommended)</div>
+        <div class="card-body">
+          <div class="field">
+            <label class="flabel">Worker URL</label>
+            <input type="text" class="finput" id="proxy-url" placeholder="https://jett-proxy.you.workers.dev"/>
+          </div>
+          <div class="field" style="margin-top:10px">
+            <label class="flabel">Access Token</label>
+            <input type="password" class="finput" id="proxy-token" placeholder="your JETT_TOKEN secret"/>
+            <div class="api-status" id="proxy-status"><div class="dot"></div><span id="proxy-status-txt">Not configured</span></div>
+          </div>
+          <div class="hint">Keeps your Anthropic key off-device. Deploy <code>worker/</code> to Cloudflare, set <code>ANTHROPIC_KEY</code> + <code>JETT_TOKEN</code> as secrets.</div>
+          <button class="btn btn-green" onclick="saveProxy()">▶ SAVE PROXY</button>
+        </div>
+      </div>
+
+      <div class="card card-accent-blue">
+        <div class="card-header">◈ API Key (Direct Fallback)</div>
         <div class="card-body">
           <div class="field">
             <label class="flabel">Anthropic API Key</label>
             <input type="password" class="finput" id="api-key" placeholder="sk-ant-api03-..." oninput="checkKey()"/>
             <div class="api-status" id="key-status"><div class="dot"></div><span id="key-status-txt">No key entered</span></div>
           </div>
-          <div class="hint">Get yours at <span style="color:var(--accent)">console.anthropic.com</span> → API Keys. Stored locally only.</div>
-          <button class="btn btn-green" onclick="saveKey()">▶ SAVE KEY</button>
+          <div class="hint">Used only if no proxy is configured. Stored in localStorage — use proxy instead for better security.</div>
+          <button class="btn btn-primary" onclick="saveKey()">▶ SAVE KEY</button>
         </div>
       </div>
 
@@ -1116,7 +1133,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '6.6';
+const APP_VERSION = '6.7';
 let history = [];
 let notes = [];
 let events = [];
@@ -1367,6 +1384,11 @@ window.onload = () => {
   const dc = getDutchConfig();
   if (dc.lastCheck) document.getElementById('dutch-last-check').value = dc.lastCheck;
   if (dc.interval) document.getElementById('dutch-interval').value = dc.interval;
+  const proxyUrl = localStorage.getItem('jett_proxy_url');
+  const proxyToken = localStorage.getItem('jett_proxy_token');
+  if (proxyUrl) document.getElementById('proxy-url').value = proxyUrl;
+  if (proxyToken) document.getElementById('proxy-token').value = proxyToken;
+  if (proxyUrl && proxyToken) setProxyStatus(true);
   const key = localStorage.getItem('jett_key');
   if (key) { document.getElementById('api-key').value = key; setKeyStatus(true); }
   const eiaKey = localStorage.getItem('jett_eia_key');
@@ -1469,6 +1491,22 @@ function getSettings() {
 }
 function getDutchConfig() {
   try { return JSON.parse(localStorage.getItem('jett_dutch') || '{}'); } catch(e) { return {}; }
+}
+
+function saveProxy() {
+  const url   = document.getElementById('proxy-url').value.trim();
+  const token = document.getElementById('proxy-token').value.trim();
+  if (!url || !token) { showToast('Enter both proxy URL and token'); return; }
+  if (!url.startsWith('https://')) { showToast('URL must start with https://'); return; }
+  localStorage.setItem('jett_proxy_url', url);
+  localStorage.setItem('jett_proxy_token', token);
+  setProxyStatus(true); showToast('Proxy saved — API key no longer needed');
+}
+function setProxyStatus(ok) {
+  const el = document.getElementById('proxy-status');
+  if (!el) return;
+  el.className = 'api-status ' + (ok ? 'ok' : '');
+  document.getElementById('proxy-status-txt').textContent = ok ? 'Proxy active' : 'Not configured';
 }
 
 function saveKey() {
@@ -2072,11 +2110,52 @@ function setActiveBadge(model) {
 }
 
 // =============================================================
+// ANTHROPIC PROXY HELPER
+// All API calls go through here — uses proxy if configured, direct as fallback
+// =============================================================
+async function anthropicFetch(body) {
+  const proxyUrl   = localStorage.getItem('jett_proxy_url');
+  const proxyToken = localStorage.getItem('jett_proxy_token');
+
+  if (proxyUrl && proxyToken) {
+    // Proxy path — API key never leaves server
+    const res = await fetch(proxyUrl.replace(/\/$/, '') + '/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${proxyToken}`,
+      },
+      body: JSON.stringify(body),
+    });
+    return res.json();
+  }
+
+  // Direct fallback (requires API key in localStorage)
+  const key = localStorage.getItem('jett_key');
+  if (!key) throw new Error('No API key — add one in Config');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+function hasAuth() {
+  return !!(localStorage.getItem('jett_proxy_url') && localStorage.getItem('jett_proxy_token'))
+      || !!localStorage.getItem('jett_key');
+}
+
+// =============================================================
 // CLAUDE API
 // =============================================================
 async function callClaude(userMsg, systemOverride) {
-  const key = localStorage.getItem('jett_key');
-  if (!key) return "I need an API key to respond. Go to the Config tab and paste your Anthropic key.";
+  if (!hasAuth()) return "I need an API key to respond. Go to the Config tab and set up the proxy or paste your Anthropic key.";
 
   const model = getActiveModel(userMsg);
   lastModelUsed = model;
@@ -2085,30 +2164,20 @@ async function callClaude(userMsg, systemOverride) {
   history.push({ role:'user', content: userMsg });
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key': key,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body: JSON.stringify({
-        model: MODELS[model],
-        max_tokens: model === 'opus' ? 2048 : 1024,
-        system: systemOverride || buildSystemPrompt(),
-        messages: history.slice(-40).map(m => ({role: m.role, content: m.content}))
-      })
+    const data = await anthropicFetch({
+      model: MODELS[model],
+      max_tokens: model === 'opus' ? 2048 : 1024,
+      system: systemOverride || buildSystemPrompt(),
+      messages: history.slice(-40).map(m => ({role: m.role, content: m.content}))
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      history.pop(); // Remove failed user message
-      if (res.status===401) return "API key rejected. Double-check it in Config.";
-      if (res.status===429) return "Rate limited. Give it a moment and try again.";
-      if (res.status===529) return "API is overloaded right now. Try again in a few seconds.";
-      return `Error: ${err.error?.message || res.statusText}`;
+    if (data.error) {
+      history.pop();
+      const t = data.error.type || '';
+      if (t === 'authentication_error') return "API key rejected. Double-check it in Config.";
+      if (t === 'rate_limit_error') return "Rate limited. Give it a moment and try again.";
+      if (t === 'overloaded_error') return "API is overloaded right now. Try again in a few seconds.";
+      return `Error: ${data.error.message}`;
     }
-    const data = await res.json();
     const reply = data.content[0]?.text || "No response received.";
     trackTokens(data);
     history.push({ role:'assistant', content: reply, model: model });
@@ -2585,8 +2654,7 @@ function renderRadar() {
 
 async function loadCurrentEvents() {
   const el = document.getElementById('current-events-body');
-  const key = localStorage.getItem('jett_key');
-  if (!key) { el.innerHTML='<div class="loading-msg">Add API key in Config to enable</div>'; return; }
+  if (!hasAuth()) { el.innerHTML='<div class="loading-msg">Add API key or proxy in Config to enable</div>'; return; }
   // Use cache if < 5 min old
   try {
     const cached = JSON.parse(sessionStorage.getItem('jett_brief_events') || 'null');
@@ -2595,12 +2663,7 @@ async function loadCurrentEvents() {
   el.innerHTML = '<div class="loading-msg">Fetching...</div>';
   const prompt = `You are Jett. Give Brett a tight current events snapshot — 4 to 6 bullet points covering the biggest stories right now across politics, geopolitics, energy, and markets. Today is ${new Date().toLocaleDateString()}. Keep each bullet one sentence, punchy and direct. No fluff. Plain text, use a dash for each bullet, no markdown asterisks.`;
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({ model: MODELS.sonnet, max_tokens:350, messages:[{role:'user', content: prompt}] })
-    });
-    const d = await res.json();
+    const d = await anthropicFetch({ model: MODELS.sonnet, max_tokens:350, messages:[{role:'user', content: prompt}] });
     if (d.error) throw new Error(`API ${d.error.type}: ${d.error.message}`);
     trackTokens(d);
     const txt = d.content?.[0]?.text || 'No response';
@@ -2612,8 +2675,7 @@ async function loadCurrentEvents() {
 
 async function loadAIBriefing(marketContext) {
   const el = document.getElementById('news-body');
-  const key = localStorage.getItem('jett_key');
-  if (!key) { el.innerHTML='<div class="loading-msg">Add API key in Config to enable AI briefing</div>'; return; }
+  if (!hasAuth()) { el.innerHTML='<div class="loading-msg">Add API key or proxy in Config to enable</div>'; return; }
   el.innerHTML = '<div class="loading-msg">Generating...</div>';
 
   const dataBlock = marketContext
@@ -2623,16 +2685,11 @@ async function loadAIBriefing(marketContext) {
   const prompt = `You are Jett. Give Brett a concise market briefing. Focus: US natural gas markets (Henry Hub, storage, weather demand outlook), then brief color on crude oil and gold. End with one broader macro note. Today is ${new Date().toLocaleDateString()}.${dataBlock} Under 170 words. Plain text, no markdown, no bullet asterisks. Spoken-friendly, direct tone.`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({
+    const d = await anthropicFetch({
         model: MODELS[currentModel === 'opus' ? 'opus' : 'sonnet'],
         max_tokens:450,
         messages:[{role:'user', content: prompt}]
-      })
     });
-    const d = await res.json();
     if (d.error) throw new Error(`API ${d.error.type}: ${d.error.message}`);
     trackTokens(d);
     const txt = d.content?.[0]?.text || 'No response';
@@ -2667,8 +2724,7 @@ You are in continuous voice conversation mode. Brett is likely driving or hands-
 }
 
 function enterDriveMode() {
-  const key = localStorage.getItem('jett_key');
-  if (!key) { showToast('Add API key in Config first'); return; }
+  if (!hasAuth()) { showToast('Add API key or proxy in Config first'); return; }
   driveActive = true;
   driveAutoRestart = false;
   document.getElementById('drive-overlay').classList.add('active');
@@ -2788,22 +2844,12 @@ async function driveProcessMessage(msg) {
   setActiveBadge(model);
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key': key,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body: JSON.stringify({
-        model: MODELS[model],
-        max_tokens: model === 'opus' ? 600 : 300,
-        system: buildDriveSystemPrompt(),
-        messages: history.slice(-30).map(m => ({role: m.role, content: m.content}))
-      })
+    const data = await anthropicFetch({
+      model: MODELS[model],
+      max_tokens: model === 'opus' ? 600 : 300,
+      system: buildDriveSystemPrompt(),
+      messages: history.slice(-30).map(m => ({role: m.role, content: m.content}))
     });
-    const data = await res.json();
     const reply = data.content?.[0]?.text || "Didn't catch that.";
     trackTokens(data);
     parseChatActions(reply);

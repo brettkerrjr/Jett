@@ -1,0 +1,10 @@
+name = "jett-proxy"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# Secrets are set separately — never in this file:
+#   wrangler secret put ANTHROPIC_KEY
+#   wrangler secret put JETT_TOKEN
+#
+# Deploy:  wrangler deploy
+# Local:   wrangler dev
