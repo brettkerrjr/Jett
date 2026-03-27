@@ -950,6 +950,11 @@ select.finput { appearance:none; cursor:pointer; }
         <div class="card-body" id="radar-body"><div class="loading-msg">—</div></div>
       </div>
 
+      <div class="card card-accent-blue">
+        <div class="card-header">◉ Current Events</div>
+        <div class="card-body" id="current-events-body"><div class="loading-msg">Tap Refresh to generate</div></div>
+      </div>
+
       <div class="card card-accent-purple">
         <div class="card-header">▣ AI Market Briefing</div>
         <div class="card-body" id="news-body"><div class="loading-msg">Tap Refresh to generate</div></div>
@@ -1110,7 +1115,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '6.4';
+const APP_VERSION = '6.5';
 let history = [];
 let notes = [];
 let events = [];
@@ -2319,6 +2324,7 @@ async function loadBriefing() {
     loadStockMarket()
   ]);
   const mkt = buildMarketContext(commodityData, energyData, stockData);
+  loadCurrentEvents();
   loadAIBriefing(mkt);
   const ts2 = document.getElementById('brief-ts');
   if (ts2) ts2.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false});
@@ -2552,6 +2558,25 @@ function renderRadar() {
   if (soon.length) html += soon.map(e=>`<div class="event-row" style="padding:5px 0"><div class="event-date-badge">${fmtDate(e.date)}</div><div class="event-desc">${esc(e.text)}</div></div>`).join('');
   if (!html) html = '<div class="loading-msg">All clear. Nothing urgent on the radar.</div>';
   el.innerHTML = html;
+}
+
+async function loadCurrentEvents() {
+  const el = document.getElementById('current-events-body');
+  const key = localStorage.getItem('jett_key');
+  if (!key) { el.innerHTML='<div class="loading-msg">Add API key in Config to enable</div>'; return; }
+  el.innerHTML = '<div class="loading-msg">Fetching...</div>';
+  const prompt = `You are Jett. Give Brett a tight current events snapshot — 4 to 6 bullet points covering the biggest stories right now across politics, geopolitics, energy, and markets. Today is ${new Date().toLocaleDateString()}. Keep each bullet one sentence, punchy and direct. No fluff. Plain text, use a dash for each bullet, no markdown asterisks.`;
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({ model: MODELS.sonnet, max_tokens:350, messages:[{role:'user', content: prompt}] })
+    });
+    const d = await res.json();
+    trackTokens(d);
+    const txt = d.content?.[0]?.text || 'No response';
+    el.innerHTML = `<div style="font-size:13px;font-weight:300;line-height:1.75">${esc(txt).replace(/\n/g,'<br>')}</div>`;
+  } catch(e) { el.innerHTML='<div class="loading-msg">Could not load current events</div>'; }
 }
 
 async function loadAIBriefing(marketContext) {
