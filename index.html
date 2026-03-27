@@ -1110,7 +1110,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '6.2';
+const APP_VERSION = '6.3';
 let history = [];
 let notes = [];
 let events = [];
@@ -1563,11 +1563,6 @@ function registerSW() {
     })
     .catch(e => console.warn('SW registration failed:', e));
 
-  // When new SW takes control, reload to get fresh assets
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!refreshing) { refreshing = true; window.location.reload(); }
-  });
 }
 
 function showUpdateBanner() {
@@ -1576,7 +1571,11 @@ function showUpdateBanner() {
 
 function applyUpdate() {
   navigator.serviceWorker.getRegistration().then(reg => {
-    if (reg?.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    if (reg?.waiting) {
+      reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+    // Give SW a moment to activate then reload to get fresh assets
+    setTimeout(() => window.location.reload(), 400);
   });
 }
 
