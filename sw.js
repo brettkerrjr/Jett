@@ -1,25 +1,21 @@
 // Jett Service Worker
 // Increment VERSION on every deploy — triggers update banner in the app
-const VERSION = 'jett-6.3';
+const VERSION = 'jett-6.4';
 const CACHE   = 'jett-cache-' + VERSION;
 
 // ── Install: cache the app shell ─────────────────────────────────────────────
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE)
-      .then(c => c.add('./'))
-      .then(() => self.skipWaiting())
-  );
+  // Cache app shell — do NOT skipWaiting here so the update banner
+  // stays visible until the user taps APPLY
+  e.waitUntil(caches.open(CACHE).then(c => c.add('./')));
 });
 
 // ── Activate: delete stale caches, claim clients ─────────────────────────────
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE).map(k => caches.delete(k))
-      ))
-      .then(() => self.clients.claim())
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    )
   );
 });
 
