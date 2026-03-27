@@ -699,6 +699,7 @@ select.finput { appearance:none; cursor:pointer; }
 <div class="hud-corner bl"></div>
 <div class="hud-corner br"></div>
 <div id="toast"></div>
+<div id="offline-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:1000;background:#1a1a1a;border-bottom:1px solid var(--accent3);color:var(--accent3);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;text-align:center;padding:6px">◌ OFFLINE — cached data only</div>
 <div id="update-banner">
   ▲ Update available — your data is safe
   <button onclick="applyUpdate()" style="background:var(--accent2);color:#000;border:none;padding:4px 12px;border-radius:10px;font-family:'Share Tech Mono',monospace;font-size:10px;cursor:pointer;font-weight:700">APPLY</button>
@@ -1115,7 +1116,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '6.5';
+const APP_VERSION = '6.6';
 let history = [];
 let notes = [];
 let events = [];
@@ -1449,8 +1450,14 @@ function loadStorage() {
   }
 }
 
-function saveNotes() { localStorage.setItem('jett_notes', JSON.stringify(notes)); updateSysInfo(); }
-function saveEvents() { localStorage.setItem('jett_events', JSON.stringify(events)); updateSysInfo(); }
+function saveNotes() {
+  if (notes.length > 500) notes = notes.slice(-500);
+  localStorage.setItem('jett_notes', JSON.stringify(notes)); updateSysInfo();
+}
+function saveEvents() {
+  if (events.length > 200) events = events.slice(-200);
+  localStorage.setItem('jett_events', JSON.stringify(events)); updateSysInfo();
+}
 function saveHistory() {
   // Keep max 60 messages persisted
   const toSave = history.slice(-60);
@@ -1574,6 +1581,17 @@ function showUpdateBanner() {
   document.getElementById('update-banner').classList.add('show');
 }
 
+function copyMsg(btn) {
+  const bubble = btn.closest('.bubble');
+  const text = bubble.innerText.replace('⎘','').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓'; setTimeout(() => btn.textContent = '⎘', 1500);
+  });
+}
+
+window.addEventListener('offline', () => document.getElementById('offline-banner').style.display = 'block');
+window.addEventListener('online',  () => document.getElementById('offline-banner').style.display = 'none');
+
 function applyUpdate() {
   navigator.serviceWorker.getRegistration().then(reg => {
     if (reg?.waiting) {
@@ -1647,17 +1665,19 @@ function importData(input) {
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
-      const data = JSON.parse(e.target.result);
+      const raw = JSON.parse(e.target.result);
+      // Validate it looks like a Jett export
+      if (typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Not a valid Jett backup');
+      const data = raw;
       if (data.notes && Array.isArray(data.notes)) {
-        // Merge notes — avoid duplicates by id
         const existingIds = new Set(notes.map(n => n.id));
-        const newNotes = data.notes.filter(n => !existingIds.has(n.id));
+        const newNotes = data.notes.slice(0, 500).filter(n => n && typeof n.text === 'string' && !existingIds.has(n.id));
         notes = [...newNotes, ...notes];
         saveNotes();
       }
       if (data.events && Array.isArray(data.events)) {
-        const existingIds = new Set(events.map(e => e.id));
-        const newEvents = data.events.filter(e => !existingIds.has(e.id));
+        const existingIds = new Set(events.map(ev => ev.id));
+        const newEvents = data.events.slice(0, 200).filter(ev => ev && typeof ev.text === 'string' && !existingIds.has(ev.id));
         events = [...newEvents, ...events];
         saveEvents();
       }
@@ -1914,7 +1934,10 @@ function appendMsg(role, text, animate=true, model='sonnet') {
 
   if (role === 'assistant') {
     const label = model === 'opus' ? 'JETT · OPUS' : 'JETT';
-    d.innerHTML = `<div class="bubble" data-model="${model}" data-label="${label}">${formatResponse(text)}</div>`;
+    d.innerHTML = `<div class="bubble" data-model="${model}" data-label="${label}">${formatResponse(text)}<button onclick="copyMsg(this)" style="position:absolute;bottom:6px;right:8px;background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:10px;opacity:0;transition:opacity 0.2s;padding:2px 4px" title="Copy">⎘</button></div>`;
+    d.querySelector('.bubble').style.position = 'relative';
+    d.querySelector('.bubble').addEventListener('mouseenter', e => e.currentTarget.querySelector('button').style.opacity = '1');
+    d.querySelector('.bubble').addEventListener('mouseleave', e => e.currentTarget.querySelector('button').style.opacity = '0');
   } else {
     d.innerHTML = `<div class="bubble">${esc(text)}</div>`;
   }
@@ -2564,6 +2587,11 @@ async function loadCurrentEvents() {
   const el = document.getElementById('current-events-body');
   const key = localStorage.getItem('jett_key');
   if (!key) { el.innerHTML='<div class="loading-msg">Add API key in Config to enable</div>'; return; }
+  // Use cache if < 5 min old
+  try {
+    const cached = JSON.parse(sessionStorage.getItem('jett_brief_events') || 'null');
+    if (cached && Date.now() - cached.ts < 300000) { el.innerHTML = cached.html; return; }
+  } catch(e) {}
   el.innerHTML = '<div class="loading-msg">Fetching...</div>';
   const prompt = `You are Jett. Give Brett a tight current events snapshot — 4 to 6 bullet points covering the biggest stories right now across politics, geopolitics, energy, and markets. Today is ${new Date().toLocaleDateString()}. Keep each bullet one sentence, punchy and direct. No fluff. Plain text, use a dash for each bullet, no markdown asterisks.`;
   try {
@@ -2573,10 +2601,13 @@ async function loadCurrentEvents() {
       body:JSON.stringify({ model: MODELS.sonnet, max_tokens:350, messages:[{role:'user', content: prompt}] })
     });
     const d = await res.json();
+    if (d.error) throw new Error(`API ${d.error.type}: ${d.error.message}`);
     trackTokens(d);
     const txt = d.content?.[0]?.text || 'No response';
-    el.innerHTML = `<div style="font-size:13px;font-weight:300;line-height:1.75">${esc(txt).replace(/\n/g,'<br>')}</div>`;
-  } catch(e) { el.innerHTML='<div class="loading-msg">Could not load current events</div>'; }
+    const html = `<div style="font-size:13px;font-weight:300;line-height:1.75">${esc(txt).replace(/\n/g,'<br>')}</div>`;
+    el.innerHTML = html;
+    sessionStorage.setItem('jett_brief_events', JSON.stringify({ ts: Date.now(), html }));
+  } catch(e) { el.innerHTML=`<div class="loading-msg">Could not load current events — ${esc(e.message)}</div>`; }
 }
 
 async function loadAIBriefing(marketContext) {
@@ -2602,10 +2633,11 @@ async function loadAIBriefing(marketContext) {
       })
     });
     const d = await res.json();
+    if (d.error) throw new Error(`API ${d.error.type}: ${d.error.message}`);
     trackTokens(d);
     const txt = d.content?.[0]?.text || 'No response';
     el.innerHTML = `<div style="font-size:13px;font-weight:300;line-height:1.65">${esc(txt)}</div>`;
-  } catch(e) { el.innerHTML='<div class="loading-msg">Could not generate briefing</div>'; }
+  } catch(e) { el.innerHTML=`<div class="loading-msg">Could not generate briefing — ${esc(e.message)}</div>`; }
 }
 
 // =============================================================
@@ -2825,9 +2857,11 @@ function fmtTs(ts) {
   catch(e) { return ''; }
 }
 function daysUntil(d) {
-  const now = new Date(new Date().toDateString());
-  const then = new Date(d+'T12:00:00');
-  return Math.round((then-now)/86400000);
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const [y, mo, day] = d.split('-').map(Number);
+  const target = Date.UTC(y, mo - 1, day);
+  return Math.round((target - today) / 86400000);
 }
 function esc(t) {
   if (!t) return '';
