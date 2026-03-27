@@ -1110,6 +1110,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
+const APP_VERSION = '6.2';
 let history = [];
 let notes = [];
 let events = [];
@@ -1366,6 +1367,8 @@ window.onload = () => {
   if (eiaKey) { document.getElementById('eia-key').value = eiaKey; setEiaKeyStatus(true); }
   // Register service worker for offline cache + update detection
   registerSW();
+  // Poll version.json for update detection (reliable on iOS PWA)
+  checkForUpdate();
   // Init battery + token budget
   updateBattery();
   const tu = getTokenUsage();
@@ -1576,6 +1579,21 @@ function applyUpdate() {
     if (reg?.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
   });
 }
+
+// version.json polling — reliable on iOS PWA where updatefound can be missed
+async function checkForUpdate() {
+  try {
+    const r = await fetch('./version.json?t=' + Date.now());
+    if (!r.ok) return;
+    const { version } = await r.json();
+    if (version && version !== APP_VERSION) showUpdateBanner();
+  } catch(e) { /* offline — ignore */ }
+}
+
+// Check on load and whenever user switches back to the app
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') checkForUpdate();
+});
 
 // =============================================================
 // DATA EXPORT / IMPORT
