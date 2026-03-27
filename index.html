@@ -1128,7 +1128,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '6.8';
+const APP_VERSION = '6.9';
 let history = [];
 let notes = [];
 let events = [];
@@ -2134,6 +2134,10 @@ async function anthropicFetch(body) {
       },
       body: JSON.stringify(body),
     });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => res.statusText);
+      throw new Error(`Proxy ${res.status}: ${txt}`);
+    }
     return res.json();
   }
 
@@ -2194,9 +2198,9 @@ async function callClaude(userMsg, systemOverride) {
     updateModelBadge(currentModel);
     return reply;
   } catch(e) {
-    history.pop(); // Remove failed user message
+    history.pop();
     updateModelBadge(currentModel);
-    return "Network error. Check your connection.";
+    return `Error: ${e.message}`;
   }
 }
 
