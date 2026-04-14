@@ -1063,7 +1063,10 @@ select.finput { appearance:none; cursor:pointer; }
           <div class="field">
             <label class="flabel">Jett Voice</label>
             <select class="finput" id="voice-sel"><option>Loading voices...</option></select>
-            <button onclick="testVoice()" style="margin-top:6px;background:none;border:1px solid var(--border);color:var(--text-dim);padding:5px 12px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">▶ TEST VOICE</button>
+            <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+              <button onclick="testVoice()" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:5px 12px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">▶ TEST VOICE</button>
+              <button onclick="loadVoices();showToast('Voices refreshed')" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:5px 12px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">↺ REFRESH VOICES</button>
+            </div>
           </div>
           <div class="field">
             <label class="flabel">Speed <span id="rate-val" style="color:var(--accent)">1.0×</span></label>
@@ -1129,7 +1132,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '7.2';
+const APP_VERSION = '7.3';
 let history = [];
 let notes = [];
 let events = [];
@@ -2334,8 +2337,10 @@ function loadVoices() {
     const sel = document.getElementById('voice-sel');
     if (!sel) return;
     sel.innerHTML = sorted.map((v,i) => {
-      const label = v.lang === 'en-US' ? v.name : `${v.name} (${v.lang})`;
-      return `<option value="${i}">${label}</option>`;
+      const name = v.lang === 'en-US' ? v.name : `${v.name} (${v.lang})`;
+      // Detect quality tier from voice name (iOS naming convention)
+      const quality = v.name.includes('Premium') ? ' ★★' : v.name.includes('Enhanced') ? ' ★' : '';
+      return `<option value="${i}">${name}${quality}</option>`;
     }).join('');
     const s = getSettings();
     if (s.voiceIdx !== undefined) {
