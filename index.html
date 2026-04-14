@@ -441,6 +441,11 @@ select.finput { appearance:none; cursor:pointer; }
 .commodity-row:last-child { border-bottom:none; }
 .up { color:var(--accent2); } .dn { color:var(--danger); }
 .loading-msg { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text-dim); padding:12px 0; }
+.transco-section { margin-top:10px; }
+.transco-section:first-child { margin-top:0; }
+.transco-section-head { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:5px; border-bottom:1px solid var(--border2); padding-bottom:3px; }
+.transco-bullet { font-size:12.5px; font-weight:300; line-height:1.65; padding:2px 0 2px 10px; color:var(--text); position:relative; }
+.transco-bullet::before { content:'•'; position:absolute; left:0; color:var(--accent2); }
 .refresh-btn { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--accent); cursor:pointer; border:1px solid var(--border); background:none; padding:3px 8px; border-radius:2px; letter-spacing:1px; transition:all 0.2s; }
 .refresh-btn:hover { background:rgba(106,171,123,0.07); }
 
@@ -916,6 +921,14 @@ select.finput { appearance:none; cursor:pointer; }
         <div class="card-body" id="energy-intel-body"><div class="loading-msg">—</div></div>
       </div>
 
+      <div class="card card-accent-green" id="transco-card">
+        <div class="card-header">
+          <span>⌁ Transco Pipeline</span>
+          <button class="refresh-btn" onclick="loadTranscoBriefing(null)">↻</button>
+        </div>
+        <div class="card-body" id="transco-body"><div class="loading-msg">Tap Refresh to generate</div></div>
+      </div>
+
       <div class="card card-accent-purple">
         <div class="card-header">▲ Equity Watch</div>
         <div class="card-body" id="stocks-body"><div class="loading-msg">—</div></div>
@@ -1094,7 +1107,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '7.6';
+const APP_VERSION = '7.7';
 let history = [];
 let notes = [];
 let events = [];
@@ -2340,6 +2353,7 @@ async function loadBriefing() {
   const mkt = buildMarketContext(commodityData, energyData, stockData);
   loadCurrentEvents();
   loadAIBriefing(mkt);
+  loadTranscoBriefing(mkt);
   const ts2 = document.getElementById('brief-ts');
   if (ts2) ts2.textContent = new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
 }
@@ -2623,6 +2637,82 @@ async function loadAIBriefing(marketContext) {
   } catch(e) { el.innerHTML=`<div class="loading-msg">Could not generate briefing — ${esc(e.message)}</div>`; }
 }
 
+async function loadTranscoBriefing(marketContext) {
+  const el = document.getElementById('transco-body');
+  if (!hasAuth()) { el.innerHTML = '<div class="loading-msg">Add API key or proxy in Config</div>'; return; }
+  el.innerHTML = '<div class="loading-msg">Analyzing Transco conditions...</div>';
+
+  // Attempt to pull any public notices from Williams 1-Line EBB
+  let oneLineContext = '';
+  try {
+    const oneLine = await fetch(
+      'https://corsproxy.io/?' + encodeURIComponent('https://1line.williams.com/'),
+      { signal: AbortSignal.timeout(7000) }
+    );
+    if (oneLine.ok) {
+      const raw = await oneLine.text();
+      const stripped = raw.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+      // Surface outage/maintenance keywords
+      const hits = stripped.match(/(?:outage|curtail|maintenance|restrict|force\s+majeure|operationally\s+available|OA reduced)[^.]{10,250}/gi) || [];
+      if (hits.length) oneLineContext = '\n\nFrom 1-Line: ' + hits.slice(0,4).join(' | ');
+    }
+  } catch(_) { /* 1-line behind auth or JS — use AI knowledge */ }
+
+  const today = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  const dataBlock = marketContext ? `\n\nLive market data:\n${marketContext}` : '';
+
+  const prompt = `You are Jett briefing Brett Kerr, a physical natural gas scheduler at Mercuria Energy America (East Region) who runs Transco positions. Today is ${today}.${dataBlock}${oneLineContext}
+
+Provide a focused Transco (Transcontinental Gas Pipe Line) operations briefing covering stations 65, 85, 134, 165, 210 and surrounding delivery points. Format your response using EXACTLY these three headers on their own lines, with bullet points under each:
+
+MAINTENANCE
+PRICING
+EXPECTED FLOW
+
+Under MAINTENANCE: any known or likely operational restrictions, scheduled maintenance windows, force majeures, or capacity constraints near those stations. Note which zone each station is in.
+Under PRICING: Transco basis levels vs Henry Hub by zone (Zone 3, 4, 5, 6, 6 NYC) — directional bias and key drivers for today. Use actual numbers where confident, ranges where not.
+Under EXPECTED FLOW: power burn outlook, weather demand, LNG feed gas impact, storage dynamics, and the key risk to watch today.
+
+Be direct, peer-level. Brett knows the pipeline. Under 220 words total.`;
+
+  try {
+    const d = await anthropicFetch({
+      model: MODELS[currentModel === 'opus' ? 'opus' : 'sonnet'],
+      max_tokens: 580,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    if (d.error) throw new Error(`API ${d.error.type}: ${d.error.message}`);
+    trackTokens(d);
+    const raw = (d.content?.[0]?.text || '').trim();
+
+    // Parse sections and render with styled bullets
+    const sections = [
+      { key: 'MAINTENANCE', label: 'Maintenance' },
+      { key: 'PRICING',     label: 'Pricing' },
+      { key: 'EXPECTED FLOW', label: 'Expected Flow' },
+    ];
+    let html = '';
+    let remaining = raw;
+    sections.forEach((sec, idx) => {
+      const nextKeys = sections.slice(idx + 1).map(s => s.key).join('|');
+      const re = new RegExp(`${sec.key}[:\\s]*([\\s\\S]*?)(?=${nextKeys ? `(?:${nextKeys})` : '$'})`, 'i');
+      const m = remaining.match(re);
+      if (!m) return;
+      const body = m[1].trim();
+      const bullets = body.split('\n')
+        .map(l => l.replace(/^[-•*]\s*/, '').trim())
+        .filter(Boolean)
+        .map(l => `<div class="transco-bullet">${esc(l)}</div>`)
+        .join('');
+      html += `<div class="transco-section"><div class="transco-section-head">${esc(sec.label)}</div>${bullets}</div>`;
+    });
+
+    if (!html) html = `<div style="font-size:12.5px;font-weight:300;line-height:1.65">${esc(raw).replace(/\n/g,'<br>')}</div>`;
+    if (oneLineContext) html += `<div style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:var(--accent2);margin-top:10px;opacity:0.7">✓ 1-line data included</div>`;
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<div class="loading-msg">Could not load Transco briefing — ${esc(e.message)}</div>`; }
+}
+
 // =============================================================
 // DRIVE MODE
 // =============================================================
@@ -2644,7 +2734,7 @@ You are in continuous voice conversation mode. Brett is likely driving or hands-
 - Push back on opinions when you genuinely disagree — don't just validate. Be direct but not combative.
 - If Brett mentions something to remember, confirm it verbally and tell him to log it later.
 - Match his energy — if he's casual, be casual. If he's focused on a topic, engage deeply.
-- You can bring up things unprompted if relevant — a market move, an upcoming event, Dutch's food check.
+- You can bring up things unprompted if relevant — a Transco market move, an upcoming event, storage report.
 - Never say "As an AI" or similar. You're Jett. That's it.
 - Keep it American — loose, confident, no stuffiness.`;
 }
