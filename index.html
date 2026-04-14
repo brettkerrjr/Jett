@@ -198,7 +198,7 @@ header {
 }
 .msg.system .bubble {
   background:rgba(90,154,184,0.05);
-  border:1px solid rgba(16,185,129,0.2);
+  border:1px solid rgba(90,154,184,0.18);
   border-radius:4px;
   color:var(--accent2);
   font-family:'Share Tech Mono',monospace; font-size:11px;
@@ -358,10 +358,10 @@ select.finput { appearance:none; cursor:pointer; }
 }
 .btn-blue { background:rgba(106,171,123,0.07); border:1px solid var(--accent); color:var(--accent); }
 .btn-blue:hover { background:rgba(106,171,123,0.13); box-shadow:var(--glow); }
-.btn-green { background:rgba(0,255,157,0.08); border:1px solid var(--accent2); color:var(--accent2); }
-.btn-green:hover { background:rgba(16,185,129,0.15); }
-.btn-orange { background:rgba(255,107,53,0.08); border:1px solid var(--accent3); color:var(--accent3); }
-.btn-red { background:rgba(255,56,96,0.08); border:1px solid var(--danger); color:var(--danger); }
+.btn-green { background:rgba(90,154,184,0.08); border:1px solid var(--accent2); color:var(--accent2); }
+.btn-green:hover { background:rgba(90,154,184,0.13); }
+.btn-orange { background:rgba(184,124,80,0.08); border:1px solid var(--accent3); color:var(--accent3); }
+.btn-red { background:rgba(184,88,88,0.08); border:1px solid var(--danger); color:var(--danger); }
 
 /* ---- NOTES / MEMORY LOG ---- */
 .note-item {
@@ -376,9 +376,9 @@ select.finput { appearance:none; cursor:pointer; }
 }
 .tag-general { background:rgba(106,171,123,0.09); color:var(--accent); border:1px solid rgba(106,171,123,0.17); }
 .tag-maddy { background:rgba(192,132,252,0.1); color:var(--accent4); border:1px solid rgba(192,132,252,0.2); }
-.tag-dutch { background:rgba(255,107,53,0.1); color:var(--accent3); border:1px solid rgba(255,107,53,0.2); }
-.tag-work { background:rgba(16,185,129,0.1); color:var(--accent2); border:1px solid rgba(16,185,129,0.2); }
-.tag-event { background:rgba(255,56,96,0.1); color:var(--danger); border:1px solid rgba(255,56,96,0.2); }
+.tag-dutch { background:rgba(184,124,80,0.09); color:var(--accent3); border:1px solid rgba(184,124,80,0.18); }
+.tag-work { background:rgba(90,154,184,0.09); color:var(--accent2); border:1px solid rgba(90,154,184,0.18); }
+.tag-event { background:rgba(184,88,88,0.09); color:var(--danger); border:1px solid rgba(184,88,88,0.18); }
 .tag-draft { background:rgba(106,171,123,0.09); color:var(--accent); border:1px solid rgba(106,171,123,0.17); }
 .note-content { flex:1; font-size:13px; line-height:1.5; }
 .note-meta { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-dim); margin-top:3px; }
@@ -403,8 +403,8 @@ select.finput { appearance:none; cursor:pointer; }
 }
 .draft-btn-send { background:rgba(106,171,123,0.07); border:1px solid var(--accent); color:var(--accent); }
 .draft-btn-send:hover { background:rgba(106,171,123,0.13); }
-.draft-btn-copy { background:rgba(0,255,157,0.08); border:1px solid var(--accent2); color:var(--accent2); }
-.draft-btn-copy:hover { background:rgba(16,185,129,0.15); }
+.draft-btn-copy { background:rgba(90,154,184,0.08); border:1px solid var(--accent2); color:var(--accent2); }
+.draft-btn-copy:hover { background:rgba(90,154,184,0.13); }
 .draft-btn-del { background:none; border:1px solid var(--border); color:var(--text-muted); }
 .draft-btn-del:hover { border-color:var(--danger); color:var(--danger); }
 
@@ -468,7 +468,7 @@ select.finput { appearance:none; cursor:pointer; }
 /* ---- INSTALL BANNER ---- */
 #install-banner {
   margin:10px 14px 0; padding:8px 12px;
-  background:rgba(0,255,157,0.04); border:1px solid rgba(0,255,157,0.25); border-radius:3px;
+  background:rgba(90,154,184,0.04); border:1px solid rgba(90,154,184,0.22); border-radius:3px;
   font-size:11px; color:var(--accent2); display:none; justify-content:space-between; align-items:center; gap:8px;
 }
 #install-banner button { background:none; border:none; color:var(--text-dim); font-size:15px; cursor:pointer; }
@@ -480,7 +480,7 @@ select.finput { appearance:none; cursor:pointer; }
   font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1.5px;
   cursor:pointer; transition:all 0.2s; border:1px solid; user-select:none;
 }
-.model-badge.sonnet { color:var(--accent); border-color:rgba(0,200,255,0.3); background:rgba(0,200,255,0.05); }
+.model-badge.sonnet { color:var(--accent); border-color:rgba(90,154,184,0.25); background:rgba(90,154,184,0.05); }
 .model-badge.opus   { color:var(--accent4); border-color:rgba(192,132,252,0.4); background:rgba(192,132,252,0.08); box-shadow:0 0 12px rgba(192,132,252,0.15); }
 .model-badge .mbdot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
 .model-badge.sonnet .mbdot { background:var(--accent); }
@@ -618,22 +618,22 @@ select.finput { appearance:none; cursor:pointer; }
 /* Big orb button */
 .drive-orb {
   width:100px; height:100px; border-radius:50%;
-  background:radial-gradient(circle at 35% 35%,rgba(106,171,123,0.13),rgba(0,200,255,0.02));
-  border:1.5px solid rgba(0,200,255,0.35);
+  background:radial-gradient(circle at 35% 35%,rgba(106,171,123,0.13),rgba(90,154,184,0.04));
+  border:1.5px solid rgba(90,154,184,0.25);
   display:flex; align-items:center; justify-content:center;
   cursor:pointer; position:relative;
   transition:all 0.3s;
   box-shadow:0 0 40px rgba(106,171,123,0.06);
 }
 .drive-orb:hover { border-color:var(--accent); box-shadow:0 0 50px rgba(106,171,123,0.17); }
-.drive-orb.listening { border-color:var(--accent); box-shadow:0 0 50px rgba(0,200,255,0.3); background:radial-gradient(circle at 35% 35%,rgba(106,171,123,0.17),rgba(106,171,123,0.03)); }
-.drive-orb.speaking  { border-color:var(--accent2); box-shadow:0 0 50px rgba(0,255,157,0.25); background:radial-gradient(circle at 35% 35%,rgba(16,185,129,0.15),rgba(0,255,157,0.02)); }
+.drive-orb.listening { border-color:var(--accent); box-shadow:0 0 50px rgba(90,154,184,0.22); background:radial-gradient(circle at 35% 35%,rgba(106,171,123,0.17),rgba(106,171,123,0.03)); }
+.drive-orb.speaking  { border-color:var(--accent2); box-shadow:0 0 50px rgba(90,154,184,0.22); background:radial-gradient(circle at 35% 35%,rgba(90,154,184,0.13),rgba(90,154,184,0.05)); }
 .drive-orb.thinking  { border-color:var(--accent4); box-shadow:0 0 50px rgba(192,132,252,0.2); animation:orbthink 1.5s ease-in-out infinite; }
 @keyframes orbthink { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
 
 .drive-orb-ring {
   position:absolute; border-radius:50%;
-  border:1px solid rgba(0,200,255,0.12);
+  border:1px solid rgba(90,154,184,0.09);
   animation:driveRing 2.8s ease-out infinite;
 }
 .drive-orb-ring:nth-child(1){width:130px;height:130px;animation-delay:0s}
@@ -650,10 +650,10 @@ select.finput { appearance:none; cursor:pointer; }
   padding:9px 28px;
   font-family:'Rajdhani',sans-serif; font-size:12px; font-weight:700; letter-spacing:3px;
   text-transform:uppercase; border-radius:2px; cursor:pointer;
-  background:rgba(255,56,96,0.06); border:1px solid rgba(255,56,96,0.3); color:var(--danger);
+  background:rgba(184,88,88,0.06); border:1px solid rgba(184,88,88,0.28); color:var(--danger);
   transition:all 0.2s;
 }
-.drive-exit:hover { background:rgba(255,56,96,0.12); }
+.drive-exit:hover { background:rgba(184,88,88,0.12); }
 
 /* Drive Mode trigger button in chat */
 .drive-trigger {
