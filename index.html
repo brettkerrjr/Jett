@@ -1066,6 +1066,7 @@ select.finput { appearance:none; cursor:pointer; }
             <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
               <button onclick="testVoice()" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:5px 12px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">▶ TEST VOICE</button>
               <button onclick="loadVoices();showToast('Voices refreshed')" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:5px 12px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">↺ REFRESH VOICES</button>
+              <button onclick="alert('Detected voices ('+speechSynthesis.getVoices().length+'):\n\n'+speechSynthesis.getVoices().map(v=>v.name+' ['+v.lang+']').join('\n'))" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:5px 12px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⚙ DEBUG VOICES</button>
             </div>
           </div>
           <div class="field">
@@ -1132,7 +1133,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '7.3';
+const APP_VERSION = '7.4';
 let history = [];
 let notes = [];
 let events = [];
