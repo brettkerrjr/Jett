@@ -60,14 +60,15 @@ jobs:
           Be creative but practical. Brett values: direct tone, fast performance, privacy, and features that actually help his daily workflow in energy markets.
           " --output-format text
 
-      - name: Push changes if any
+      - name: Commit and push changes if any
         run: |
           git config user.name "Jett Nightly Bot"
           git config user.email "nightly@jett.bot"
           if [ -n "$(git status --porcelain)" ]; then
             git add -A
+            git commit -m "chore: nightly automated improvements $(date +'%Y-%m-%d')"
             git push origin main
             echo "Changes pushed successfully"
           else
-            echo "No changes to push"
+            echo "No changes to push — already optimal"
           fi
