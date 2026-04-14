@@ -1,0 +1,73 @@
+name: Nightly Jett Improvement
+
+on:
+  schedule:
+    - cron: '0 7 * * *'  # 2am CST (UTC-5) = 7am UTC
+  workflow_dispatch:       # Allow manual trigger from GitHub Actions tab
+
+jobs:
+  improve:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run nightly audit and improvement session
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: 8096
+        run: |
+          claude --dangerously-skip-permissions -p "
+          You are an expert PWA engineer and AI assistant specialist performing a nightly automated improvement session on Jett — Brett Kerr's personal AI assistant PWA.
+
+          CONTEXT:
+          - Jett is a single-file PWA (index.html ~2600 lines) served via GitHub Pages
+          - Brett is in Houston TX, works in energy/natural gas industry, iPhone-primary
+          - Stack: vanilla JS, no build step, Anthropic API (Sonnet/Opus), EIA v2, Open-Meteo, Yahoo Finance via Vercel proxy
+          - Privacy-first: API keys never in code, all user data in localStorage with jett_ prefix
+          - Version must be bumped in THREE places together: APP_VERSION in index.html, version.json, VERSION in sw.js
+
+          YOUR TASKS (in order):
+          1. Read and fully understand index.html, sw.js, version.json, CLAUDE.md
+          2. Identify and fix any bugs, logic errors, or broken functionality
+          3. Apply 2-3 meaningful improvements from this list (pick the highest value ones not yet implemented):
+             - UI/UX polish for iPhone (tap targets, spacing, animations)
+             - Performance optimizations (caching, debouncing, lazy loading)
+             - New useful features for Brett's workflow (energy markets, calendar, productivity)
+             - Better error handling and user feedback
+             - Accessibility improvements
+             - PWA best practices (offline handling, cache strategy)
+             - Smart features using Claude AI capabilities
+          4. Bump the version (current + 0.1) in all three files together
+          5. Commit all changes with a clear message explaining what was improved and why
+          6. Do NOT break existing functionality
+          7. Do NOT add unnecessary complexity
+          8. Keep changes focused and ship-ready
+
+          Be creative but practical. Brett values: direct tone, fast performance, privacy, and features that actually help his daily workflow in energy markets.
+          " --output-format text
+
+      - name: Push changes if any
+        run: |
+          git config user.name "Jett Nightly Bot"
+          git config user.email "nightly@jett.bot"
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git push origin main
+            echo "Changes pushed successfully"
+          else
+            echo "No changes to push"
+          fi
