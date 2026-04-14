@@ -227,7 +227,7 @@ header {
   box-shadow:0 0 24px rgba(106,171,123,0.07);
 }
 .orb:hover { box-shadow:0 0 36px rgba(106,171,123,0.22); border-color:var(--accent); }
-.orb.recording { border-color:var(--danger); background:radial-gradient(circle at 35% 35%,rgba(255,56,96,0.2),rgba(255,56,96,0.03)); box-shadow:0 0 36px rgba(255,56,96,0.25); animation:orbpulse 1s ease-in-out infinite; }
+.orb.recording { border-color:var(--danger); background:radial-gradient(circle at 35% 35%,rgba(184,88,88,0.18),rgba(184,88,88,0.03)); box-shadow:0 0 36px rgba(184,88,88,0.22); animation:orbpulse 1s ease-in-out infinite; }
 @keyframes orbpulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
 .orb-ring { position:absolute; border-radius:50%; border:1px solid rgba(106,171,123,0.13); animation:ringout 2.4s ease-out infinite; }
 .orb-ring:nth-child(1){width:90px;height:90px;animation-delay:0s}
@@ -262,7 +262,7 @@ header {
   flex-shrink:0; transition:all 0.2s;
 }
 .ibtn:hover,.ibtn.active { border-color:var(--accent); color:var(--accent); background:rgba(106,171,123,0.06); }
-.ibtn.recording { border-color:var(--danger); color:var(--danger); background:rgba(255,56,96,0.08); }
+.ibtn.recording { border-color:var(--danger); color:var(--danger); background:rgba(184,88,88,0.08); }
 .ibtn.send { border-color:var(--accent); color:var(--accent); background:rgba(106,171,123,0.06); }
 
 /* ---- IPHONE RESPONSIVE ---- */
@@ -313,6 +313,16 @@ header {
 
   /* Settings-specific — extra bottom padding so last card isn't cut off */
   #settings-panel .scroll-body { padding-bottom:50px; }
+
+  /* Config tab — compact since it's accessed infrequently */
+  #settings-panel .card-header { padding:7px 12px; font-size:9px; letter-spacing:2px; }
+  #settings-panel .card-body { padding:10px 12px; }
+  #settings-panel .field { margin-bottom:9px; }
+  #settings-panel .flabel { font-size:8px; margin-bottom:3px; }
+  #settings-panel .finput { padding:7px 10px; font-size:12px; }
+  #settings-panel .btn { padding:8px; font-size:11px; margin-top:6px; }
+  #settings-panel .hint { font-size:10px; margin-top:6px; }
+  #settings-panel .scroll-body { gap:10px; }
 
   /* API status */
   .api-status { margin-top:8px; font-size:10px; }
@@ -661,10 +671,10 @@ select.finput { appearance:none; cursor:pointer; }
   padding:7px 14px;
   font-family:'Rajdhani',sans-serif; font-size:11px; font-weight:700; letter-spacing:2px;
   text-transform:uppercase;
-  background:rgba(0,255,157,0.06); border:1px solid rgba(0,255,157,0.3); color:var(--accent2);
+  background:rgba(90,154,184,0.05); border:1px solid rgba(90,154,184,0.25); color:var(--accent2);
   border-radius:3px; cursor:pointer; transition:all 0.2s; flex-shrink:0;
 }
-.drive-trigger:hover { background:rgba(0,255,157,0.12); box-shadow:var(--glow2); }
+.drive-trigger:hover { background:rgba(90,154,184,0.09); box-shadow:var(--glow2); }
 .drive-trigger svg { flex-shrink:0; }
 
 /* ---- REMINDER BADGE ---- */
@@ -811,8 +821,7 @@ select.finput { appearance:none; cursor:pointer; }
       <button class="qa-chip" onclick="sendQuick('Give me my morning briefing')">Morning briefing</button>
       <button class="qa-chip" onclick="sendQuick('How are NG markets looking today?')">NG markets</button>
       <button class="qa-chip" onclick="sendQuick('What\'s on my radar this week?')">My radar</button>
-      <button class="qa-chip" onclick="sendQuick('Dutch food check — is it time to hit HEB?')">Dutch</button>
-      <button class="qa-chip" onclick="sendQuick('Anything I should know about today?')">Today</button>
+<button class="qa-chip" onclick="sendQuick('Anything I should know about today?')">Today</button>
     </div>
 
     <div class="input-bar">
@@ -835,33 +844,6 @@ select.finput { appearance:none; cursor:pointer; }
   <div id="log-panel" class="panel">
     <div class="scroll-body">
 
-      <!-- Quick log -->
-      <div class="card card-accent-blue">
-        <div class="card-header">◈ Quick Log</div>
-        <div class="card-body">
-          <div class="field">
-            <label class="flabel">Tag</label>
-            <select class="finput" id="log-tag">
-              <option value="general">General</option>
-              <option value="maddy">Maddy</option>
-              <option value="dutch">Dutch</option>
-              <option value="work">Work</option>
-              <option value="event">Event / Date</option>
-              <option value="draft">Email Draft</option>
-            </select>
-          </div>
-          <div class="field">
-            <label class="flabel">Note</label>
-            <textarea class="finput" id="log-text" placeholder="Drop anything here — Jett will remember it..."></textarea>
-          </div>
-          <div class="field" id="log-date-field" style="display:none">
-            <label class="flabel">Date (if event)</label>
-            <input type="date" class="finput" id="log-date"/>
-          </div>
-          <button class="btn btn-blue" onclick="addNote()">▶ LOG TO JETT</button>
-        </div>
-      </div>
-
       <!-- Reminders / upcoming -->
       <div class="card card-accent-orange">
         <div class="card-header">
@@ -881,13 +863,6 @@ select.finput { appearance:none; cursor:pointer; }
         </div>
       </div>
 
-      <!-- Dutch tracker -->
-      <div class="card card-accent-orange">
-        <div class="card-header">◈ Dutch</div>
-        <div class="card-body" id="dutch-body">
-          <div class="loading-msg">Loading...</div>
-        </div>
-      </div>
 
       <!-- Email Drafts -->
       <div class="card card-accent-blue" id="drafts-card" style="display:none">
@@ -1084,20 +1059,6 @@ select.finput { appearance:none; cursor:pointer; }
         </div>
       </div>
 
-      <div class="card card-accent-purple">
-        <div class="card-header">◈ Dutch Food Reminder</div>
-        <div class="card-body">
-          <div class="field">
-            <label class="flabel">Last checked HEB for Full Moon food</label>
-            <input type="date" class="finput" id="dutch-last-check"/>
-          </div>
-          <div class="field">
-            <label class="flabel">Remind me every (days)</label>
-            <input type="number" class="finput" id="dutch-interval" value="5" min="1" max="30"/>
-          </div>
-          <button class="btn btn-orange" onclick="saveDutchSettings()">▶ SAVE</button>
-        </div>
-      </div>
 
       <div class="card card-accent-blue">
         <div class="card-header">◈ Data Management</div>
@@ -1133,7 +1094,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '7.4';
+const APP_VERSION = '7.5';
 let history = [];
 let notes = [];
 let events = [];
@@ -1142,6 +1103,7 @@ let recognition = null;
 let isSpeaking = false;
 let voices = [];
 let lastModelUsed = 'sonnet'; // track what model actually fired per message
+let briefingTimer = null;
 
 // =============================================================
 // TOKEN TRACKING
@@ -1264,13 +1226,6 @@ function buildSystemPrompt() {
             .join('\n')
     : 'None scheduled.';
 
-  const dutchCfg = getDutchConfig();
-  const daysSinceCheck = dutchCfg.lastCheck
-    ? Math.floor((Date.now() - new Date(dutchCfg.lastCheck)) / 86400000)
-    : 999;
-  const dutchReminder = daysSinceCheck >= (dutchCfg.interval || 5)
-    ? `IMPORTANT: It has been ${daysSinceCheck === 999 ? 'a while' : daysSinceCheck + ' days'} since Brett checked HEB San Felipe for Dutch's Full Moon food. Flag this proactively.`
-    : `Dutch food last checked ${daysSinceCheck} day(s) ago. No reminder needed yet.`;
 
   return `You are Jett, Brett's personal AI assistant. You operate like JARVIS — precise, efficient, dry wit deployed sparingly. You are not generic. You know Brett.
 
@@ -1310,9 +1265,6 @@ MADDY RULES:
 - Flag her events proactively when dates are approaching.
 - Restaurant recs: special occasion and date night quality spots only.
 
-DUTCH RULES:
-${dutchReminder}
-- Dutch eats Full Moon brand food. HEB San Felipe is frequently out of stock. Remind Brett periodically.
 
 TRAVEL CONTEXT:
 - Trip types: weekend city breaks, National Park/outdoor, road trips.
@@ -1337,7 +1289,7 @@ RESPONSE STYLE: Spoken-friendly — no markdown headers, no bullet asterisks, no
 CHAT-TO-LOG SYSTEM:
 You can save notes and events directly from conversation. When Brett asks you to remember something, log something, or save an event, include ONE structured command per item at the END of your response using this exact format:
 
-[LOG:tag:text] — saves a note. Tags: general, maddy, dutch, work
+[LOG:tag:text] — saves a note. Tags: general, maddy, work
 [EVENT:YYYY-MM-DD:text] — saves a dated event (use this instead of LOG for anything with a date)
 [DRAFT:to:subject:body] — saves an email draft for Brett to review
 
@@ -1346,7 +1298,7 @@ IMPORTANT: Use exactly ONE command per item. Do NOT duplicate — if something h
 Examples:
 - "Remember Maddy wants to try Uchi" → [LOG:maddy:Wants to try Uchi for her birthday]
 - "We have dinner Saturday March 29" → [EVENT:2026-03-29:Dinner reservations]
-- "Dutch was low on food" → [LOG:dutch:Was low on food last check]
+
 - "Draft an email to John about the pipeline nomination" → [DRAFT:john@example.com:Pipeline Nomination Update:Hi John, ...]
 
 Confirm what you logged in your spoken response BEFORE the commands. Commands are hidden from display.
@@ -1374,10 +1326,6 @@ window.onload = () => {
     t.addEventListener('click', () => switchTab(t.dataset.p))
   );
 
-  document.getElementById('log-tag').addEventListener('change', function() {
-    document.getElementById('log-date-field').style.display = this.value === 'event' ? 'block' : 'none';
-  });
-
   // Load settings into form
   const s = getSettings();
   if (s.autoSpeak) document.getElementById('auto-speak').value = s.autoSpeak;
@@ -1393,9 +1341,7 @@ window.onload = () => {
   if (s.smartRouting) {
     document.getElementById('smart-routing').value = s.smartRouting;
   }
-  const dc = getDutchConfig();
-  if (dc.lastCheck) document.getElementById('dutch-last-check').value = dc.lastCheck;
-  if (dc.interval) document.getElementById('dutch-interval').value = dc.interval;
+
   const proxyUrl = localStorage.getItem('jett_proxy_url');
   const proxyToken = localStorage.getItem('jett_proxy_token');
   if (proxyUrl) document.getElementById('proxy-url').value = proxyUrl;
@@ -1433,15 +1379,11 @@ function initWelcome() {
   } else {
     const hour = new Date().getHours();
     const tod = hour < 5 ? 'night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-    const dc = getDutchConfig();
-    const dutchDays = dc.lastCheck ? Math.floor((Date.now()-new Date(dc.lastCheck))/86400000) : 999;
-    const dutchDue = dutchDays >= (dc.interval || 5);
     const soonEvents = events.filter(e => daysUntil(e.date) >= 0 && daysUntil(e.date) <= 2);
 
     let msg = `Good ${tod}, Brett.`;
-    if (dutchDue) msg += ` Dutch food check is ${dutchDays === 999 ? 'overdue — no record of last check' : `${dutchDays} days overdue`}. Worth swinging by HEB.`;
     if (soonEvents.length) msg += ` Heads up — ${soonEvents[0].text} is coming up ${daysUntil(soonEvents[0].date) === 0 ? 'today' : daysUntil(soonEvents[0].date) === 1 ? 'tomorrow' : 'in '+daysUntil(soonEvents[0].date)+' days'}.`;
-    if (!dutchDue && !soonEvents.length) msg += ` v6 running clean — SW cache active, data persists across updates.`;
+    if (!soonEvents.length) msg += ` All clear on the radar.`;
     msg += ` What do you need?`;
 
     appendMsg('assistant', msg, false, 'sonnet');
@@ -1500,9 +1442,6 @@ function saveHistory() {
 
 function getSettings() {
   try { return JSON.parse(localStorage.getItem('jett_settings') || '{}'); } catch(e) { return {}; }
-}
-function getDutchConfig() {
-  try { return JSON.parse(localStorage.getItem('jett_dutch') || '{}'); } catch(e) { return {}; }
 }
 
 function saveProxy() {
@@ -1577,15 +1516,6 @@ function saveModelSettings() {
   showToast('Model settings saved');
 }
 
-function saveDutchSettings() {
-  const d = {
-    lastCheck: document.getElementById('dutch-last-check').value,
-    interval: parseInt(document.getElementById('dutch-interval').value) || 5
-  };
-  localStorage.setItem('jett_dutch', JSON.stringify(d));
-  showToast('Dutch reminder saved');
-  renderLog();
-}
 
 function clearChatHistory() {
   if (confirm('Clear chat history? Notes and events will be kept.')) {
@@ -1690,7 +1620,7 @@ async function shareOrExport() {
     notes, events, history,
     drafts: getDrafts(),
     settings: getSettings(),
-    dutch: getDutchConfig(),
+
     tokens: getTokenUsage(),
   };
   const json = JSON.stringify(data, null, 2);
@@ -1746,7 +1676,7 @@ function importData(input) {
       }
       if (data.drafts && Array.isArray(data.drafts)) saveDrafts(data.drafts);
       if (data.settings) localStorage.setItem('jett_settings', JSON.stringify(data.settings));
-      if (data.dutch) localStorage.setItem('jett_dutch', JSON.stringify(data.dutch));
+
       if (data.tokens) localStorage.setItem('jett_tokens', JSON.stringify(data.tokens));
       closeModal('import-modal');
       showToast('Data imported — refreshing');
@@ -1765,7 +1695,12 @@ function importData(input) {
 function switchTab(p) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.p===p));
   document.querySelectorAll('.panel').forEach(panel => panel.classList.toggle('active', panel.id===p+'-panel'));
-  if (p === 'brief') loadBriefing();
+  if (p === 'brief') {
+    loadBriefing();
+    briefingTimer = setInterval(loadBriefing, 600000); // 10 min
+  } else {
+    clearInterval(briefingTimer);
+  }
   if (p === 'log') renderLog();
   if (p === 'settings') updateSysInfo();
 }
@@ -1806,7 +1741,6 @@ function deleteEvent(id) {
 function renderLog() {
   renderReminders();
   renderMaddy();
-  renderDutch();
   renderDrafts();
   renderAllNotes();
   updateReminderBadge();
@@ -1873,7 +1807,7 @@ function renderReminders() {
     .sort((a,b) => new Date(a.date) - new Date(b.date))
     .slice(0, 8);
 
-  if (!soon.length) { el.innerHTML = '<div class="loading-msg">No upcoming events. Use Quick Log above.</div>'; return; }
+  if (!soon.length) { el.innerHTML = '<div class="loading-msg">No upcoming events. Ask Jett to log one.</div>'; return; }
 
   el.innerHTML = soon.map(e => {
     const days = daysUntil(e.date);
@@ -1913,48 +1847,11 @@ function renderMaddy() {
         <button class="note-del" onclick="deleteNote(${n.id})">×</button>
       </div>`).join('');
   }
-  if (!html) html = '<div class="loading-msg">No Maddy notes yet. Log them in Quick Log above.</div>';
+  if (!html) html = '<div class="loading-msg">No Maddy notes yet. Ask Jett to log one.</div>';
   html += `<div style="margin-top:10px;font-size:11px;color:var(--text-dim);font-weight:300;line-height:1.6">For trips outside Houston: Jett suggests Amex Fine Hotels & Resorts or Airbnb.</div>`;
   el.innerHTML = html;
 }
 
-function renderDutch() {
-  const el = document.getElementById('dutch-body');
-  const dc = getDutchConfig();
-  const days = dc.lastCheck ? Math.floor((Date.now() - new Date(dc.lastCheck)) / 86400000) : null;
-  const interval = dc.interval || 5;
-  const needsCheck = days === null || days >= interval;
-
-  let html = `<div style="font-size:13px;font-weight:300;line-height:1.6;margin-bottom:10px">
-    <strong style="color:var(--accent3)">Dutch</strong> — Full Moon food · HEB San Felipe<br>
-    <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:${needsCheck?'var(--danger)':'var(--accent2)'}">
-      ${days === null ? 'Never checked — go verify stock' : needsCheck ? `Last checked ${days} days ago — check stock` : `Checked ${days} day(s) ago`}
-    </span>
-  </div>`;
-
-  if (needsCheck) {
-    html += `<button class="btn btn-orange" onclick="markDutchChecked()" style="margin-top:0">MARK AS CHECKED TODAY</button>`;
-  }
-
-  const dutchNotes = notes.filter(n => n.tag === 'dutch');
-  if (dutchNotes.length) {
-    html += dutchNotes.slice(0,3).map(n => `
-      <div class="note-item" style="padding:8px 0;border-bottom:1px solid var(--border2)">
-        <div style="flex:1"><div class="note-content">${esc(n.text)}</div><div class="note-meta">${fmtTs(n.ts)}</div></div>
-        <button class="note-del" onclick="deleteNote(${n.id})">×</button>
-      </div>`).join('');
-  }
-  el.innerHTML = html;
-}
-
-function markDutchChecked() {
-  const dc = getDutchConfig();
-  dc.lastCheck = new Date().toISOString().split('T')[0];
-  localStorage.setItem('jett_dutch', JSON.stringify(dc));
-  document.getElementById('dutch-last-check').value = dc.lastCheck;
-  renderDutch();
-  showToast('Dutch food check logged');
-}
 
 function renderAllNotes() {
   const el = document.getElementById('all-notes-body');
@@ -1975,9 +1872,7 @@ function renderAllNotes() {
 
 function updateReminderBadge() {
   const urgent = events.filter(e => daysUntil(e.date) <= 3 && daysUntil(e.date) >= 0).length;
-  const dc = getDutchConfig();
-  const dutchDue = !dc.lastCheck || Math.floor((Date.now()-new Date(dc.lastCheck))/86400000) >= (dc.interval||5);
-  const total = urgent + (dutchDue ? 1 : 0);
+  const total = urgent;
   const badge = document.getElementById('reminder-count');
   badge.innerHTML = total > 0 ? `<span class="reminder-badge">${total}</span>` : '';
 }
@@ -2231,7 +2126,7 @@ function parseChatActions(text) {
     const tag = m[1].toLowerCase();
     const noteText = m[2].trim();
     const key = noteText.toLowerCase().replace(/[^a-z0-9]/g,'');
-    if (['general','maddy','dutch','work'].includes(tag) && noteText && !seen.has(key)) {
+    if (['general','maddy','work'].includes(tag) && noteText && !seen.has(key)) {
       seen.add(key);
       notes.unshift({ id: Date.now() + logged, tag, text: noteText, date: null, ts: new Date().toISOString() });
       logged++;
@@ -2446,7 +2341,7 @@ async function loadBriefing() {
   loadCurrentEvents();
   loadAIBriefing(mkt);
   const ts2 = document.getElementById('brief-ts');
-  if (ts2) ts2.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false});
+  if (ts2) ts2.textContent = new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
 }
 
 function buildMarketContext(commodityResult, energyResult, stockResult) {
@@ -2497,7 +2392,8 @@ async function fetchYahooQuote(symbol) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2d`;
   const proxies = [
     `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    `https://corsproxy.io/?${encodeURIComponent(url)}`
+    `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
   ];
   for (const proxy of proxies) {
     try {
@@ -2670,10 +2566,7 @@ function renderRadar() {
   const el = document.getElementById('radar-body');
   const soon = events.filter(e=>daysUntil(e.date)>=0&&daysUntil(e.date)<=14)
     .sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,5);
-  const dc = getDutchConfig();
-  const dutchDue = !dc.lastCheck || Math.floor((Date.now()-new Date(dc.lastCheck))/86400000)>=(dc.interval||5);
   let html = '';
-  if (dutchDue) html += `<div style="padding:6px 0;color:var(--accent3);font-size:12px">Dutch food check overdue — HEB San Felipe</div>`;
   if (soon.length) html += soon.map(e=>`<div class="event-row" style="padding:5px 0"><div class="event-date-badge">${fmtDate(e.date)}</div><div class="event-desc">${esc(e.text)}</div></div>`).join('');
   if (!html) html = '<div class="loading-msg">All clear. Nothing urgent on the radar.</div>';
   el.innerHTML = html;
@@ -2763,11 +2656,9 @@ function enterDriveMode() {
 function getDriveGreeting() {
   const hour = new Date().getHours();
   const tod = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-  const dc = getDutchConfig();
-  const dutchDue = !dc.lastCheck || Math.floor((Date.now()-new Date(dc.lastCheck))/86400000) >= (dc.interval||5);
-  let extra = dutchDue ? " One thing — Dutch's food check is overdue, worth swinging by HEB." : "";
+  let extra = "";
   const upcoming = events.filter(e=>daysUntil(e.date)>=0&&daysUntil(e.date)<=3);
-  if (upcoming.length) extra += ` Also, you've got something coming up in the next few days — ${upcoming[0].text}.`;
+  if (upcoming.length) extra += ` Heads up — ${upcoming[0].text} is coming up.`;
   return `Drive Mode active. Good ${tod}, Brett.${extra} What's on your mind?`;
 }
 
