@@ -946,9 +946,16 @@ select.finput { appearance:none; cursor:pointer; }
       <div class="card card-accent-green" id="transco-card">
         <div class="card-header">
           <span>⌁ Transco Pipeline</span>
-          <button class="refresh-btn" onclick="loadTranscoBriefing(null)">↻</button>
+          <a href="https://1line.williams.com" target="_blank" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--accent2);text-decoration:none;border:1px solid var(--border);padding:2px 7px;border-radius:2px;cursor:pointer">1-LINE ↗</a>
         </div>
-        <div class="card-body" id="transco-body"><div class="loading-msg">Tap Refresh to generate</div></div>
+        <div class="card-body">
+          <div id="transco-output"><div class="loading-msg">Paste 1-line notices below and tap Analyze.</div></div>
+          <div style="margin-top:10px">
+            <textarea class="finput" id="transco-paste" placeholder="Paste operational notices, capacity postings, or maintenance text from 1line.williams.com here..." style="min-height:70px;font-size:12px;resize:vertical"></textarea>
+          </div>
+          <button class="btn btn-green" style="margin-top:6px" onclick="analyzeTranscoData()">▶ ANALYZE</button>
+          <div id="transco-ts" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted);margin-top:6px;text-align:right"></div>
+        </div>
       </div>
 
       <div class="card card-accent-blue" id="picks-card">
@@ -1175,7 +1182,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '8.0';
+const APP_VERSION = '8.1';
 let history = [];
 let notes = [];
 let events = [];
@@ -2713,80 +2720,86 @@ async function loadAIBriefing(marketContext) {
   } catch(e) { el.innerHTML=`<div class="loading-msg">Could not generate briefing — ${esc(e.message)}</div>`; }
 }
 
-async function loadTranscoBriefing(marketContext) {
-  const el = document.getElementById('transco-body');
-  if (!hasAuth()) { el.innerHTML = '<div class="loading-msg">Add API key or proxy in Config</div>'; return; }
-  el.innerHTML = '<div class="loading-msg">Analyzing Transco conditions...</div>';
+async function analyzeTranscoData() {
+  const output = document.getElementById('transco-output');
+  const pasteEl = document.getElementById('transco-paste');
+  const tsEl = document.getElementById('transco-ts');
+  const raw1line = (pasteEl?.value || '').trim();
 
-  // Attempt to pull any public notices from Williams 1-Line EBB
-  let oneLineContext = '';
-  try {
-    const oneLine = await fetch(
-      'https://corsproxy.io/?' + encodeURIComponent('https://1line.williams.com/'),
-      { signal: AbortSignal.timeout(7000) }
-    );
-    if (oneLine.ok) {
-      const raw = await oneLine.text();
-      const stripped = raw.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
-      // Surface outage/maintenance keywords
-      const hits = stripped.match(/(?:outage|curtail|maintenance|restrict|force\s+majeure|operationally\s+available|OA reduced)[^.]{10,250}/gi) || [];
-      if (hits.length) oneLineContext = '\n\nFrom 1-Line: ' + hits.slice(0,4).join(' | ');
-    }
-  } catch(_) { /* 1-line behind auth or JS — use AI knowledge */ }
+  if (!raw1line) { showToast('Paste 1-line notices first'); return; }
+  if (!hasAuth()) { output.innerHTML = '<div class="loading-msg">Add API key or proxy in Config</div>'; return; }
+
+  output.innerHTML = '<div class="loading-msg">Analyzing...</div>';
 
   const today = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
-  const dataBlock = marketContext ? `\n\nLive market data:\n${marketContext}` : '';
 
-  const prompt = `You are Jett briefing Brett Kerr, a physical natural gas scheduler at Mercuria Energy America (East Region) who runs Transco positions. Today is ${today}.${dataBlock}${oneLineContext}
+  const prompt = `You are Jett. Brett Kerr is a physical natural gas scheduler (East Region, Mercuria Energy America) who works Transco positions daily. Today is ${today}.
 
-Provide a focused Transco (Transcontinental Gas Pipe Line) operations briefing covering stations 65, 85, 134, 165, 210 and surrounding delivery points. Format your response using EXACTLY these three headers on their own lines, with bullet points under each:
+He has pasted the following raw text from the Williams 1-Line informational posting system:
+
+---
+${raw1line}
+---
+
+Analyze ONLY what is in the pasted text above — do not invent or assume any data not present. Extract and structure the information for stations 65, 85, 134, 165, 210 and surrounding locs. Format using EXACTLY these three headers with bullet points:
 
 MAINTENANCE
 PRICING
 EXPECTED FLOW
 
-Under MAINTENANCE: For each known or likely restriction near stations 65, 85, 134, 165, 210 — include: (a) the specific location name or milepost range, (b) the station/zone it affects, (c) estimated % of capacity affected or Mcf/d reduction if known, (d) the date window (start–end). If nothing specific is known, state expected maintenance season patterns for this time of year on the relevant segment. Always list at least 2 bullet points.
-Under PRICING: Transco basis levels vs Henry Hub by zone (Zone 3, 4, 5, 6, 6 NYC) — directional bias and key drivers for today. Use actual numbers where confident, ranges where not.
-Under EXPECTED FLOW: power burn outlook, weather demand, LNG feed gas impact, storage dynamics, and the key risk to watch today.
+MAINTENANCE: For each posting that involves capacity restrictions, OFOs, force majeures, planned outages, or maintenance — include: specific location/station/milepost, zone, % capacity or Mcf/d affected, effective date window. If a posting doesn't relate to these stations, skip it.
+PRICING: Any basis levels, index prices, or pricing notices mentioned in the text. If none posted, say "No pricing notices in current postings."
+EXPECTED FLOW: Any flow restrictions, nominations guidance, OFO triggers, or scheduling notes that affect Brett's positions. If none, say "No flow notices in current postings."
 
-Be direct, peer-level. Brett knows the pipeline. Under 220 words total.`;
+Be direct, peer-level, zero filler.`;
 
   try {
     const d = await anthropicFetch({
-      model: MODELS[currentModel === 'opus' ? 'opus' : 'sonnet'],
-      max_tokens: 580,
+      model: MODELS.opus,
+      max_tokens: 700,
       messages: [{ role: 'user', content: prompt }]
     });
     if (d.error) throw new Error(`API ${d.error.type}: ${d.error.message}`);
     trackTokens(d);
-    const raw = (d.content?.[0]?.text || '').trim();
+    const text = (d.content?.[0]?.text || '').trim();
 
-    // Parse sections and render with styled bullets
     const sections = [
-      { key: 'MAINTENANCE', label: 'Maintenance' },
-      { key: 'PRICING',     label: 'Pricing' },
-      { key: 'EXPECTED FLOW', label: 'Expected Flow' },
+      { key: 'MAINTENANCE',    label: 'Maintenance' },
+      { key: 'PRICING',        label: 'Pricing' },
+      { key: 'EXPECTED FLOW',  label: 'Expected Flow' },
     ];
     let html = '';
-    let remaining = raw;
     sections.forEach((sec, idx) => {
       const nextKeys = sections.slice(idx + 1).map(s => s.key).join('|');
       const re = new RegExp(`${sec.key}[:\\s]*([\\s\\S]*?)(?=${nextKeys ? `(?:${nextKeys})` : '$'})`, 'i');
-      const m = remaining.match(re);
+      const m = text.match(re);
       if (!m) return;
-      const body = m[1].trim();
-      const bullets = body.split('\n')
-        .map(l => l.replace(/^[-•*]\s*/, '').trim())
-        .filter(Boolean)
-        .map(l => `<div class="transco-bullet">${esc(l)}</div>`)
-        .join('');
+      const bullets = m[1].trim().split('\n')
+        .map(l => l.replace(/^[-•*]\s*/, '').trim()).filter(Boolean)
+        .map(l => `<div class="transco-bullet">${esc(l)}</div>`).join('');
       html += `<div class="transco-section"><div class="transco-section-head">${esc(sec.label)}</div>${bullets}</div>`;
     });
+    if (!html) html = `<div style="font-size:12.5px;line-height:1.65">${esc(text).replace(/\n/g,'<br>')}</div>`;
 
-    if (!html) html = `<div style="font-size:12.5px;font-weight:300;line-height:1.65">${esc(raw).replace(/\n/g,'<br>')}</div>`;
-    if (oneLineContext) html += `<div style="font-family:'Share Tech Mono',monospace;font-size:8.5px;color:var(--accent2);margin-top:10px;opacity:0.7">✓ 1-line data included</div>`;
-    el.innerHTML = html;
-  } catch(e) { el.innerHTML = `<div class="loading-msg">Could not load Transco briefing — ${esc(e.message)}</div>`; }
+    output.innerHTML = html;
+    if (tsEl) tsEl.textContent = 'Analyzed ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    // Persist last analysis
+    try { localStorage.setItem('jett_transco_last', JSON.stringify({ ts: Date.now(), html, paste: raw1line })); } catch(_) {}
+  } catch(e) { output.innerHTML = `<div class="loading-msg">Analysis failed — ${esc(e.message)}</div>`; }
+}
+
+function loadTranscoBriefing() {
+  // Restore last saved analysis on briefing tab load
+  try {
+    const saved = JSON.parse(localStorage.getItem('jett_transco_last') || 'null');
+    if (!saved) return;
+    const output = document.getElementById('transco-output');
+    const pasteEl = document.getElementById('transco-paste');
+    const tsEl = document.getElementById('transco-ts');
+    if (output) output.innerHTML = saved.html;
+    if (pasteEl && saved.paste) pasteEl.value = saved.paste;
+    if (tsEl) tsEl.textContent = 'Last analyzed ' + new Date(saved.ts).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  } catch(_) {}
 }
 
 // =============================================================
