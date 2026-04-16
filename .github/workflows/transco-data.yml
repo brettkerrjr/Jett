@@ -1,0 +1,76 @@
+name: Transco Data Refresh
+
+on:
+  schedule:
+    # Every 2 hours on weekdays, 7am–5pm CT (12:00–22:00 UTC)
+    - cron: '0 12,14,16,18,20,22 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Fetch Transco operational data
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude --dangerously-skip-permissions -p "
+          You are a data agent. Search the web RIGHT NOW for current Transco (Transcontinental Gas Pipe Line, operated by Williams Companies) operational information. Today is $(date +'%A, %B %d, %Y').
+
+          Brett Kerr is a physical gas scheduler at Mercuria Energy America who works Transco positions daily. He needs real, current information for stations 65, 85, 134, 165, 210 and the zones they sit in (Zone 3 through Zone 6).
+
+          SEARCH THESE SOURCES:
+          1. ferc.gov — search for Transco or Transcontinental Gas public EBB postings, force majeures, capacity notices
+          2. williams.com/news — Williams Companies news and operational announcements
+          3. Search 'Transco pipeline maintenance 2025' or 'Transcontinental gas pipe line operational notice'
+          4. Search 'Transco basis Zone 6 today' or 'natural gas Transco zone pricing'
+          5. Search 'Transco OFO force majeure station' for any active restrictions
+          6. eia.gov — check for any natural gas pipeline alerts or Transco-related data
+
+          After searching, write a file called transco-data.json in the repo root with this EXACT structure (valid JSON only, no markdown):
+          {
+            'fetched': 'ISO8601 timestamp of now',
+            'date': 'human readable date',
+            'maintenance': ['bullet text 1', 'bullet text 2'],
+            'pricing': ['bullet text 1', 'bullet text 2'],
+            'flow': ['bullet text 1', 'bullet text 2'],
+            'sources': ['source name or URL 1', 'source name or URL 2'],
+            'data_quality': 'public_sources'
+          }
+
+          RULES:
+          - Only include information you actually found from real sources — never fabricate
+          - If a section has no real data found, use: ['No public notices found for this period']
+          - Cite each source you used in the sources array
+          - maintenance: capacity restrictions, outages, planned maintenance, force majeures near the stations above
+          - pricing: any Transco zone basis levels, index prices, or market color you can find
+          - flow: demand conditions, weather impact, storage context, scheduling notes
+          - Use double quotes in JSON (replace all single quotes in the template above)
+          " --output-format text
+
+      - name: Commit data file if changed
+        run: |
+          git config user.name "Jett Transco Bot"
+          git config user.email "transco@jett.bot"
+          if [ -n "$(git status --porcelain transco-data.json)" ]; then
+            git add transco-data.json
+            git commit -m "data: transco refresh $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push origin main
+            echo "Transco data updated"
+          else
+            echo "No changes to transco data"
+          fi

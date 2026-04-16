@@ -949,12 +949,15 @@ select.finput { appearance:none; cursor:pointer; }
           <a href="https://1line.williams.com" target="_blank" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--accent2);text-decoration:none;border:1px solid var(--border);padding:2px 7px;border-radius:2px;cursor:pointer">1-LINE ↗</a>
         </div>
         <div class="card-body">
-          <div id="transco-output"><div class="loading-msg">Paste 1-line notices below and tap Analyze.</div></div>
-          <div style="margin-top:10px">
-            <textarea class="finput" id="transco-paste" placeholder="Paste operational notices, capacity postings, or maintenance text from 1line.williams.com here..." style="min-height:70px;font-size:12px;resize:vertical"></textarea>
-          </div>
-          <button class="btn btn-green" style="margin-top:6px" onclick="analyzeTranscoData()">▶ ANALYZE</button>
+          <div id="transco-output"><div class="loading-msg">Loading Transco data...</div></div>
           <div id="transco-ts" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted);margin-top:6px;text-align:right"></div>
+          <details style="margin-top:10px">
+            <summary style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-dim);cursor:pointer;list-style:none;padding:4px 0;outline:none">▸ MANUAL OVERRIDE</summary>
+            <div style="margin-top:8px">
+              <textarea class="finput" id="transco-paste" placeholder="Paste operational notices from 1line.williams.com here..." style="min-height:70px;font-size:12px;resize:vertical"></textarea>
+              <button class="btn btn-green" style="margin-top:6px" onclick="analyzeTranscoData()">▶ ANALYZE</button>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -1173,7 +1176,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '8.2';
+const APP_VERSION = '8.3';
 let history = [];
 let notes = [];
 let events = [];
@@ -2757,17 +2760,56 @@ Be direct, peer-level, zero filler.`;
   } catch(e) { output.innerHTML = `<div class="loading-msg">Analysis failed — ${esc(e.message)}</div>`; }
 }
 
-function loadTranscoBriefing() {
-  // Restore last saved analysis on briefing tab load
+async function loadTranscoBriefing() {
+  const output = document.getElementById('transco-output');
+  const tsEl = document.getElementById('transco-ts');
+  if (!output) return;
+
+  // Try auto-fetched data from repo (written by GitHub Actions workflow)
+  try {
+    const res = await fetch('./transco-data.json?t=' + Date.now());
+    if (res.ok) {
+      const data = await res.json();
+      const fetched = new Date(data.fetched);
+      const ageHours = (Date.now() - fetched.getTime()) / 3600000;
+
+      const renderSection = (title, items) => {
+        if (!items || !items.length) return '';
+        return `<div class="transco-section"><div class="transco-section-title">${title}</div>` +
+          items.map(item => `<div class="transco-bullet">• ${esc(item)}</div>`).join('') +
+          '</div>';
+      };
+
+      let html = '';
+      html += renderSection('Maintenance & Capacity', data.maintenance);
+      html += renderSection('Pricing & Basis', data.pricing);
+      html += renderSection('Flow & Market Conditions', data.flow);
+
+      if (data.sources && data.sources.length && data.sources[0] !== 'placeholder — workflow not yet run') {
+        html += `<div class="transco-section" style="margin-top:8px;border-top:1px solid var(--border2);padding-top:8px">
+          <div class="transco-section-title" style="color:var(--text-muted)">Sources</div>` +
+          data.sources.map(s => `<div class="transco-bullet" style="color:var(--text-muted);font-size:11px">• ${esc(s)}</div>`).join('') +
+          '</div>';
+      }
+
+      output.innerHTML = html || '<div class="loading-msg">No Transco data yet — workflow runs every 2 hours on weekdays.</div>';
+      const stale = ageHours > 4 ? ' · ⚠ stale' : '';
+      if (tsEl) tsEl.textContent = 'Auto ' + fetched.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) + stale;
+      return;
+    }
+  } catch(_) {}
+
+  // Fall back to localStorage saved manual analysis
   try {
     const saved = JSON.parse(localStorage.getItem('jett_transco_last') || 'null');
-    if (!saved) return;
-    const output = document.getElementById('transco-output');
+    if (!saved) {
+      output.innerHTML = '<div class="loading-msg">No data yet — workflow runs every 2 hours on weekdays, or use Manual Override below.</div>';
+      return;
+    }
+    output.innerHTML = saved.html;
     const pasteEl = document.getElementById('transco-paste');
-    const tsEl = document.getElementById('transco-ts');
-    if (output) output.innerHTML = saved.html;
     if (pasteEl && saved.paste) pasteEl.value = saved.paste;
-    if (tsEl) tsEl.textContent = 'Last analyzed ' + new Date(saved.ts).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    if (tsEl) tsEl.textContent = 'Manual ' + new Date(saved.ts).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
   } catch(_) {}
 }
 
