@@ -958,13 +958,6 @@ select.finput { appearance:none; cursor:pointer; }
         </div>
       </div>
 
-      <div class="card card-accent-blue" id="picks-card">
-        <div class="card-header">
-          <span>◆ Daily Picks</span>
-          <button class="refresh-btn" onclick="loadDailyPicks(null,true)">↻</button>
-        </div>
-        <div class="card-body" id="picks-body"><div class="loading-msg">Tap Refresh to generate</div></div>
-      </div>
 
       <div class="card card-accent-green" id="watchlist-card">
         <div class="card-header">
@@ -984,13 +977,11 @@ select.finput { appearance:none; cursor:pointer; }
         <div class="card-body" id="radar-body"><div class="loading-msg">—</div></div>
       </div>
 
-      <div class="card card-accent-blue">
-        <div class="card-header">◉ Current Events</div>
-        <div class="card-body" id="current-events-body"><div class="loading-msg">Tap Refresh to generate</div></div>
-      </div>
-
       <div class="card card-accent-purple">
-        <div class="card-header">▣ AI Market Briefing</div>
+        <div class="card-header">
+          <span>▣ Market Commentary</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:7.5px;color:var(--text-muted)">AI · LIVE DATA</span>
+        </div>
         <div class="card-body" id="news-body"><div class="loading-msg">Tap Refresh to generate</div></div>
       </div>
 
@@ -1182,7 +1173,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '8.1';
+const APP_VERSION = '8.2';
 let history = [];
 let notes = [];
 let events = [];
@@ -2426,10 +2417,8 @@ async function loadBriefing() {
     loadStockMarket()
   ]);
   const mkt = buildMarketContext(commodityData, energyData, stockData);
-  loadCurrentEvents();
   loadAIBriefing(mkt);
-  loadTranscoBriefing(mkt);
-  loadDailyPicks(mkt, false);
+  loadTranscoBriefing();
   loadWatchlistCard();
   const ts2 = document.getElementById('brief-ts');
   if (ts2) ts2.textContent = new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
@@ -2675,26 +2664,6 @@ function renderRadar() {
   el.innerHTML = html;
 }
 
-async function loadCurrentEvents() {
-  const el = document.getElementById('current-events-body');
-  if (!hasAuth()) { el.innerHTML='<div class="loading-msg">Add API key or proxy in Config to enable</div>'; return; }
-  // Use cache if < 5 min old
-  try {
-    const cached = JSON.parse(sessionStorage.getItem('jett_brief_events') || 'null');
-    if (cached && Date.now() - cached.ts < 300000) { el.innerHTML = cached.html; return; }
-  } catch(e) {}
-  el.innerHTML = '<div class="loading-msg">Fetching...</div>';
-  const prompt = `You are Jett. Give Brett a tight current events snapshot — 4 to 6 bullet points covering the biggest stories right now across politics, geopolitics, energy, and markets. Today is ${new Date().toLocaleDateString()}. Keep each bullet one sentence, punchy and direct. No fluff. Plain text, use a dash for each bullet, no markdown asterisks.`;
-  try {
-    const d = await anthropicFetch({ model: MODELS.sonnet, max_tokens:350, messages:[{role:'user', content: prompt}] });
-    if (d.error) throw new Error(`API ${d.error.type}: ${d.error.message}`);
-    trackTokens(d);
-    const txt = d.content?.[0]?.text || 'No response';
-    const html = `<div style="font-size:13px;font-weight:300;line-height:1.75">${esc(txt).replace(/\n/g,'<br>')}</div>`;
-    el.innerHTML = html;
-    sessionStorage.setItem('jett_brief_events', JSON.stringify({ ts: Date.now(), html }));
-  } catch(e) { el.innerHTML=`<div class="loading-msg">Could not load current events — ${esc(e.message)}</div>`; }
-}
 
 async function loadAIBriefing(marketContext) {
   const el = document.getElementById('news-body');
@@ -3021,102 +2990,6 @@ function showToast(m) {
   const t = document.getElementById('toast');
   t.textContent = m; t.classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
-}
-
-// =============================================================
-// DAILY PICKS
-// =============================================================
-async function loadDailyPicks(marketContext, force) {
-  const el = document.getElementById('picks-body');
-  if (!hasAuth()) { el.innerHTML = '<div class="loading-msg">Add API key or proxy in Config</div>'; return; }
-
-  // 4-hour cache unless forced refresh
-  if (!force) {
-    try {
-      const cached = JSON.parse(sessionStorage.getItem('jett_picks') || 'null');
-      if (cached && Date.now() - cached.ts < 14400000) { el.innerHTML = cached.html; return; }
-    } catch(_) {}
-  }
-
-  el.innerHTML = '<div class="loading-msg">Analyzing markets for picks...</div>';
-
-  // Pull live prices for energy + key stocks
-  const watchSymbols = [
-    { s:'XOM', n:'ExxonMobil' }, { s:'COP', n:'ConocoPhillips' },
-    { s:'WMB', n:'Williams Cos' }, { s:'KMI', n:'Kinder Morgan' },
-    { s:'LNG', n:'Cheniere Energy' }, { s:'XLE', n:'Energy ETF' },
-    { s:'NVDA', n:'Nvidia' }, { s:'SPY', n:'S&P 500' }
-  ];
-  const quotes = await Promise.allSettled(watchSymbols.map(w => fetchYahooQuote(w.s)));
-  const priceBlock = watchSymbols.map((w, i) => {
-    const q = quotes[i];
-    if (q.status === 'fulfilled' && q.value) {
-      return `${w.s} (${w.n}): $${q.value.price} (${q.value.up?'+':''}${q.value.chg}%)`;
-    }
-    return `${w.s}: unavailable`;
-  }).join('\n');
-
-  const today = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
-  const dataBlock = marketContext ? `\nBroader market context:\n${marketContext}\n` : '';
-
-  const prompt = `You are Jett giving Brett Kerr (natural gas scheduler, energy investor, Houston TX) 3 stock picks for today, ${today}.
-
-Live prices as of moments ago:
-${priceBlock}
-${dataBlock}
-Return EXACTLY 3 picks in this format (no extra text, just the 3 entries):
-
-TICKER | Company Name | DIRECTION | Price | Change
-Thesis: [2-sentence max — specific catalyst or technical reason for today]
-Tags: [comma-separated max 3 — e.g.: momentum, oversold, energy, earnings, pipeline, macro]
-
-DIRECTION must be one of: BULLISH, BEARISH, WATCH
-
-Prioritize energy/pipeline sector. Include at least 2 energy names. Be direct and specific — no hedging.`;
-
-  try {
-    const d = await anthropicFetch({
-      model: MODELS[currentModel === 'opus' ? 'opus' : 'sonnet'],
-      max_tokens: 400,
-      messages: [{ role: 'user', content: prompt }]
-    });
-    if (d.error) throw new Error(`API ${d.error.type}: ${d.error.message}`);
-    trackTokens(d);
-    const raw = (d.content?.[0]?.text || '').trim();
-
-    // Parse structured response
-    const pickBlocks = raw.split(/\n(?=[A-Z]{1,5}\s*\|)/).filter(Boolean);
-    let html = '';
-    pickBlocks.forEach(block => {
-      const lines = block.trim().split('\n').filter(Boolean);
-      const header = lines[0] || '';
-      const parts = header.split('|').map(p => p.trim());
-      if (parts.length < 3) return;
-      const [ticker, company, direction, price, chg] = parts;
-      const thesisLine = lines.find(l => l.startsWith('Thesis:')) || '';
-      const tagsLine = lines.find(l => l.startsWith('Tags:')) || '';
-      const thesis = thesisLine.replace('Thesis:', '').trim();
-      const tags = tagsLine.replace('Tags:', '').split(',').map(t => t.trim()).filter(Boolean);
-      const dirClass = direction === 'BULLISH' ? 'bull' : direction === 'BEARISH' ? 'bear' : 'neutral';
-      const chgClass = chg && chg.includes('-') ? 'dn' : 'up';
-      html += `<div class="pick-item">
-        <div class="pick-header">
-          <div><span class="pick-ticker">${esc(ticker)}</span><span class="pick-name">${esc(company)}</span></div>
-          <div class="pick-price"><span class="${chgClass}">${esc(price||'')}</span> <span class="${chgClass}" style="font-size:9px">${esc(chg||'')}</span></div>
-        </div>
-        <div class="pick-thesis">${esc(thesis)}</div>
-        <div class="pick-tags">
-          <span class="pick-tag ${dirClass}">${esc(direction)}</span>
-          ${tags.map(t => `<span class="pick-tag neutral">${esc(t)}</span>`).join('')}
-        </div>
-      </div>`;
-    });
-
-    if (!html) html = `<div style="font-size:12.5px;font-weight:300;line-height:1.65">${esc(raw).replace(/\n/g,'<br>')}</div>`;
-    html += `<div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted);margin-top:8px">Not financial advice · AI analysis only</div>`;
-    sessionStorage.setItem('jett_picks', JSON.stringify({ ts: Date.now(), html }));
-    el.innerHTML = html;
-  } catch(e) { el.innerHTML = `<div class="loading-msg">Could not generate picks — ${esc(e.message)}</div>`; }
 }
 
 // =============================================================
