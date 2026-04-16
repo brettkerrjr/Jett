@@ -788,7 +788,7 @@ select.finput { appearance:none; cursor:pointer; }
   <header>
     <div>
       <div class="logo">JETT</div>
-      <div class="logo-sub">Personal AI · v6 · Brett's System</div>
+      <div class="logo-sub">Personal AI · v8.3 · Brett's System</div>
     </div>
     <div class="header-right">
       <div class="header-top-row">
@@ -836,8 +836,10 @@ select.finput { appearance:none; cursor:pointer; }
     <div class="quick-actions" id="quick-actions">
       <button class="qa-chip" onclick="sendQuick('Give me my morning briefing')">Morning briefing</button>
       <button class="qa-chip" onclick="sendQuick('How are NG markets looking today?')">NG markets</button>
+      <button class="qa-chip" onclick="sendQuick('What\'s the latest EIA storage report and what does it mean for Henry Hub?')">EIA storage</button>
+      <button class="qa-chip" onclick="sendQuick('Any major pipeline constraints or flow issues I should know about today — Transco, Tennessee, Columbia?')">Pipeline check</button>
       <button class="qa-chip" onclick="sendQuick('What\'s on my radar this week?')">My radar</button>
-<button class="qa-chip" onclick="sendQuick('Anything I should know about today?')">Today</button>
+      <button class="qa-chip" onclick="sendQuick('Anything I should know about today?')">Today</button>
     </div>
 
     <div class="input-bar">
@@ -867,7 +869,6 @@ select.finput { appearance:none; cursor:pointer; }
           <option value="general">General</option>
           <option value="work">Work</option>
           <option value="maddy">Maddy</option>
-          <option value="event">Events</option>
         </select>
       </div>
 
@@ -953,7 +954,10 @@ select.finput { appearance:none; cursor:pointer; }
           <div style="margin-top:10px">
             <textarea class="finput" id="transco-paste" placeholder="Paste operational notices, capacity postings, or maintenance text from 1line.williams.com here..." style="min-height:70px;font-size:12px;resize:vertical"></textarea>
           </div>
-          <button class="btn btn-green" style="margin-top:6px" onclick="analyzeTranscoData()">▶ ANALYZE</button>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="btn btn-green" style="flex:1;margin-top:0" onclick="analyzeTranscoData()">▶ ANALYZE</button>
+            <button onclick="document.getElementById('transco-paste').value='';document.getElementById('transco-output').innerHTML='<div class=\\'loading-msg\\'>Paste 1-line notices below and tap Analyze.</div>';try{localStorage.removeItem('jett_transco_last')}catch(_){};showToast('Cleared')" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:0 12px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:9px;cursor:pointer;white-space:nowrap;transition:all 0.2s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">✕ CLEAR</button>
+          </div>
           <div id="transco-ts" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted);margin-top:6px;text-align:right"></div>
         </div>
       </div>
@@ -1153,7 +1157,7 @@ select.finput { appearance:none; cursor:pointer; }
         <div class="card-header" style="color:var(--danger)">◈ System</div>
         <div class="card-body">
           <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);line-height:2">
-            <div>JETT v6.0 — Brett's System</div>
+            <div>JETT v8.3 — Brett's System</div>
             <div>ENGINE: Claude Sonnet + Opus (hybrid)</div>
             <div>STORAGE: Device localStorage only</div>
             <div id="sys-size">DATA: Calculating...</div>
@@ -1173,7 +1177,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '8.2';
+const APP_VERSION = '8.3';
 let history = [];
 let notes = [];
 let events = [];
@@ -1443,7 +1447,7 @@ function initWelcome() {
   const c = document.getElementById('chat-messages');
   const sys = document.createElement('div');
   sys.className = 'msg system';
-  sys.innerHTML = '<div class="bubble">JETT v7.7 · Sonnet + Opus · EIA + Transco + Equity · Drive Mode</div>';
+  sys.innerHTML = '<div class="bubble">JETT v8.3 · Sonnet + Opus · EIA + Transco + Equity · Drive Mode</div>';
   c.appendChild(sys);
 
   if (history.length > 0) {
@@ -1912,12 +1916,15 @@ function renderMaddy() {
 
   let html = '';
   if (maddyEvents.length) {
-    html += maddyEvents.slice(0,3).map(e => `
-      <div class="event-row">
+    html += maddyEvents.slice(0,3).map(e => {
+      const d = daysUntil(e.date);
+      const dayLabel = d === 0 ? 'TODAY' : d === 1 ? 'Tomorrow' : d < 0 ? `${Math.abs(d)} days ago` : `${d} days away`;
+      return `<div class="event-row">
         <div class="event-date-badge">${fmtDate(e.date)}</div>
-        <div style="flex:1"><div class="event-desc">${esc(e.text)}</div><div class="days-away">${daysUntil(e.date)} days away</div></div>
+        <div style="flex:1"><div class="event-desc">${esc(e.text)}</div><div class="days-away" style="${d<=1&&d>=0?'color:var(--danger)':''}">${dayLabel}</div></div>
         <button class="event-del" onclick="deleteEvent(${e.id})">×</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
   if (maddyNotes.length) {
     html += maddyNotes.slice(0,4).map(n => `
@@ -2038,7 +2045,7 @@ function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.sc
 // MODEL ROUTING — Sonnet / Opus
 // =============================================================
 const MODELS = {
-  sonnet: 'claude-sonnet-4-20250514',
+  sonnet: 'claude-sonnet-4-6',
   opus:   'claude-opus-4-6'
 };
 
@@ -2944,24 +2951,54 @@ function driveSpeak(text, onDone) {
   if (!window.speechSynthesis) { onDone && onDone(); return; }
   speechSynthesis.cancel();
   const clean = text.replace(/[*_`#]/g,'').replace(/<br>/g,' ').replace(/\n/g,' ').trim();
-  const u = new SpeechSynthesisUtterance(clean);
-  const sel = document.getElementById('voice-sel');
-  const rate = document.getElementById('speech-rate');
-  if (sel && voices[sel.value]) u.voice = voices[sel.value];
-  if (rate) u.rate = parseFloat(rate.value);
+  if (!clean) { onDone && onDone(); return; }
+
   driveSpeaking = true; isSpeaking = true;
   setDriveState('speaking');
-  u.onend = () => {
+
+  const done = () => {
     driveSpeaking = false; isSpeaking = false;
     if (driveActive) setDriveState('idle');
     onDone && onDone();
   };
-  u.onerror = () => {
-    driveSpeaking = false; isSpeaking = false;
-    if (driveActive) setDriveState('idle');
-    onDone && onDone();
-  };
-  speechSynthesis.speak(u);
+
+  // iOS Safari drops long utterances mid-way — chunk at sentence boundaries
+  const MAX_CHUNK = 200;
+  if (clean.length <= MAX_CHUNK) {
+    const u = new SpeechSynthesisUtterance(clean);
+    const sel = document.getElementById('voice-sel');
+    const rate = document.getElementById('speech-rate');
+    if (sel && voices[sel.value]) u.voice = voices[sel.value];
+    if (rate) u.rate = parseFloat(rate.value);
+    u.onend = done;
+    u.onerror = done;
+    speechSynthesis.speak(u);
+    return;
+  }
+
+  // Build sentence chunks under MAX_CHUNK chars
+  const sentences = clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [clean];
+  const chunks = [];
+  let chunk = '';
+  for (const s of sentences) {
+    if ((chunk + s).length > 180 && chunk) { chunks.push(chunk.trim()); chunk = s; }
+    else chunk += s;
+  }
+  if (chunk.trim()) chunks.push(chunk.trim());
+
+  let idx = 0;
+  function speakNext() {
+    if (idx >= chunks.length || !driveSpeaking) { done(); return; }
+    const u = new SpeechSynthesisUtterance(chunks[idx]);
+    const sel = document.getElementById('voice-sel');
+    const rate = document.getElementById('speech-rate');
+    if (sel && voices[sel.value]) u.voice = voices[sel.value];
+    if (rate) u.rate = parseFloat(rate.value);
+    u.onend = () => { idx++; speakNext(); };
+    u.onerror = done;
+    speechSynthesis.speak(u);
+  }
+  speakNext();
 }
 
 
