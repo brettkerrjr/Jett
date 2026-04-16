@@ -389,7 +389,6 @@ select.finput { appearance:none; cursor:pointer; }
 .tag-dutch { background:rgba(184,124,80,0.09); color:var(--accent3); border:1px solid rgba(184,124,80,0.18); }
 .tag-work { background:rgba(90,154,184,0.09); color:var(--accent2); border:1px solid rgba(90,154,184,0.18); }
 .tag-event { background:rgba(184,88,88,0.09); color:var(--danger); border:1px solid rgba(184,88,88,0.18); }
-.tag-draft { background:rgba(106,171,123,0.09); color:var(--accent); border:1px solid rgba(106,171,123,0.17); }
 .note-content { flex:1; font-size:13px; line-height:1.5; }
 .note-meta { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-dim); margin-top:3px; }
 .note-del { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:0 2px; flex-shrink:0; transition:color 0.2s; }
@@ -440,6 +439,18 @@ select.finput { appearance:none; cursor:pointer; }
 .commodity-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid var(--text-muted); font-family:'Share Tech Mono',monospace; font-size:11px; }
 .commodity-row:last-child { border-bottom:none; }
 .up { color:var(--accent2); } .dn { color:var(--danger); }
+.pick-item { padding:10px 0; border-bottom:1px solid var(--border2); }
+.pick-item:last-child { border-bottom:none; }
+.pick-header { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
+.pick-ticker { font-family:'Rajdhani',sans-serif; font-size:15px; font-weight:700; color:var(--accent); }
+.pick-name { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-dim); margin-left:6px; }
+.pick-price { font-family:'Share Tech Mono',monospace; font-size:11px; }
+.pick-thesis { font-size:12px; font-weight:300; line-height:1.55; color:var(--text-dim); margin-top:3px; }
+.pick-tags { display:flex; gap:4px; margin-top:5px; flex-wrap:wrap; }
+.pick-tag { font-family:'Share Tech Mono',monospace; font-size:8px; padding:2px 6px; border-radius:2px; }
+.pick-tag.bull { background:rgba(106,171,123,0.1); color:var(--accent); border:1px solid rgba(106,171,123,0.2); }
+.pick-tag.bear { background:rgba(184,88,88,0.1); color:var(--danger); border:1px solid rgba(184,88,88,0.2); }
+.pick-tag.neutral { background:rgba(90,154,184,0.1); color:var(--accent2); border:1px solid rgba(90,154,184,0.2); }
 .loading-msg { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text-dim); padding:12px 0; }
 .transco-section { margin-top:10px; }
 .transco-section:first-child { margin-top:0; }
@@ -849,6 +860,17 @@ select.finput { appearance:none; cursor:pointer; }
   <div id="log-panel" class="panel">
     <div class="scroll-body">
 
+      <div style="display:flex;gap:6px;margin-bottom:4px">
+        <input type="search" class="finput" id="log-search" placeholder="Search notes..." style="flex:1;font-size:12px;padding:7px 10px" oninput="filterLog(this.value)"/>
+        <select class="finput" id="log-filter" style="width:100px;font-size:12px;padding:7px 8px" onchange="filterLog(document.getElementById('log-search').value)">
+          <option value="all">All</option>
+          <option value="general">General</option>
+          <option value="work">Work</option>
+          <option value="maddy">Maddy</option>
+          <option value="event">Events</option>
+        </select>
+      </div>
+
       <!-- Reminders / upcoming -->
       <div class="card card-accent-orange">
         <div class="card-header">
@@ -907,12 +929,12 @@ select.finput { appearance:none; cursor:pointer; }
       </div>
 
       <div class="card card-accent-blue">
-        <div class="card-header">⬡ Weather — Houston, TX</div>
+        <div class="card-header"><span>⬡ Weather — Houston, TX</span><span id="weather-ts" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted)"></span></div>
         <div class="card-body" id="weather-body"><div class="loading-msg">—</div></div>
       </div>
 
       <div class="card card-accent-green">
-        <div class="card-header">◈ Commodity Watch</div>
+        <div class="card-header"><span>◈ Commodity Watch</span><span id="commodity-ts" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted)"></span></div>
         <div class="card-body" id="commodities-body"><div class="loading-msg">—</div></div>
       </div>
 
@@ -929,8 +951,24 @@ select.finput { appearance:none; cursor:pointer; }
         <div class="card-body" id="transco-body"><div class="loading-msg">Tap Refresh to generate</div></div>
       </div>
 
+      <div class="card card-accent-blue" id="picks-card">
+        <div class="card-header">
+          <span>◆ Daily Picks</span>
+          <button class="refresh-btn" onclick="loadDailyPicks(null,true)">↻</button>
+        </div>
+        <div class="card-body" id="picks-body"><div class="loading-msg">Tap Refresh to generate</div></div>
+      </div>
+
+      <div class="card card-accent-green" id="watchlist-card">
+        <div class="card-header">
+          <span>◈ Watchlist</span>
+          <button class="refresh-btn" onclick="loadWatchlistCard()">↻</button>
+        </div>
+        <div class="card-body" id="watchlist-body"><div class="loading-msg">—</div></div>
+      </div>
+
       <div class="card card-accent-purple">
-        <div class="card-header">▲ Equity Watch</div>
+        <div class="card-header"><span>▲ Equity Watch</span><span id="stocks-ts" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted)"></span></div>
         <div class="card-body" id="stocks-body"><div class="loading-msg">—</div></div>
       </div>
 
@@ -997,6 +1035,21 @@ select.finput { appearance:none; cursor:pointer; }
           </div>
           <div class="hint">Free key at <span style="color:var(--accent)">eia.gov/opendata</span>. Unlocks live Henry Hub price and weekly natural gas storage data.</div>
           <button class="btn btn-orange" onclick="saveEiaKey()">▶ SAVE EIA KEY</button>
+        </div>
+      </div>
+
+      <div class="card card-accent-blue">
+        <div class="card-header">◈ Watchlist Tickers</div>
+        <div class="card-body">
+          <div class="field">
+            <label class="flabel">Add Ticker</label>
+            <div style="display:flex;gap:6px">
+              <input type="text" class="finput" id="watchlist-add-input" placeholder="e.g. WMB" style="text-transform:uppercase;flex:1"/>
+              <button onclick="addWatchlistTicker()" style="background:none;border:1px solid var(--accent);color:var(--accent);padding:0 12px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:9px;cursor:pointer">ADD</button>
+            </div>
+          </div>
+          <div id="watchlist-tickers-list" style="margin-top:8px"></div>
+          <div class="hint">Prices load on Briefing tab refresh. Default list: XOM, COP, WMB, LNG.</div>
         </div>
       </div>
 
@@ -1073,6 +1126,21 @@ select.finput { appearance:none; cursor:pointer; }
       </div>
 
 
+      <div class="card card-accent-purple">
+        <div class="card-header">
+          <span>⌘ Dev Queue</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted)" id="devqueue-count"></span>
+        </div>
+        <div class="card-body">
+          <div class="hint" style="margin-bottom:10px">Log feature requests and bug reports. The nightly bot reads these and implements the highest-priority items.</div>
+          <div class="field">
+            <textarea class="finput" id="devqueue-input" placeholder="Describe a feature or bug fix..." style="min-height:50px"></textarea>
+          </div>
+          <button class="btn btn-blue" onclick="addDevQueueItem()">▶ ADD TO QUEUE</button>
+          <div id="devqueue-list" style="margin-top:10px"></div>
+        </div>
+      </div>
+
       <div class="card card-accent-blue">
         <div class="card-header">◈ Data Management</div>
         <div class="card-body">
@@ -1107,7 +1175,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '7.7';
+const APP_VERSION = '8.0';
 let history = [];
 let notes = [];
 let events = [];
@@ -1191,14 +1259,12 @@ function saveTokenBudget() {
 }
 
 function resetTokenUsage() {
-  if (confirm('Reset token usage counter to zero?')) {
-    const usage = getTokenUsage();
-    usage.used = 0;
-    const now = new Date();
-    usage.monthKey = `${now.getFullYear()}-${now.getMonth()}`;
-    saveTokenUsage(usage);
-    showToast('Usage counter reset');
-  }
+  if (!confirm('Reset usage counter to zero?')) return;
+  const usage = getTokenUsage();
+  usage.costUsd = 0;
+  saveTokenUsage(usage);
+  updateBattery();
+  showToast('Usage reset to $0.00');
 }
 
 // =============================================================
@@ -1379,7 +1445,7 @@ function initWelcome() {
   const c = document.getElementById('chat-messages');
   const sys = document.createElement('div');
   sys.className = 'msg system';
-  sys.innerHTML = '<div class="bubble">JETT v7 · Sonnet + Opus hybrid · EIA + Equity · Drive Mode · Vercel Proxy</div>';
+  sys.innerHTML = '<div class="bubble">JETT v7.7 · Sonnet + Opus · EIA + Transco + Equity · Drive Mode</div>';
   c.appendChild(sys);
 
   if (history.length > 0) {
@@ -1628,7 +1694,7 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 // Share via Web Share API (iOS → Save to Files/iCloud) or fallback to download
 async function shareOrExport() {
   const data = {
-    version: 'jett_v6',
+    version: 'jett_v7',
     exported: new Date().toISOString(),
     notes, events, history,
     drafts: getDrafts(),
@@ -1716,6 +1782,8 @@ function switchTab(p) {
   }
   if (p === 'log') renderLog();
   if (p === 'settings') updateSysInfo();
+  if (p === 'settings') renderWatchlistConfig();
+  if (p === 'settings') renderDevQueue();
 }
 
 // =============================================================
@@ -1855,7 +1923,7 @@ function renderMaddy() {
   }
   if (maddyNotes.length) {
     html += maddyNotes.slice(0,4).map(n => `
-      <div class="note-item">
+      <div class="note-item" data-tag="${esc(n.tag)}">
         <div style="flex:1"><div class="note-content">${esc(n.text)}</div><div class="note-meta">${fmtTs(n.ts)}</div></div>
         <button class="note-del" onclick="deleteNote(${n.id})">×</button>
       </div>`).join('');
@@ -1873,7 +1941,7 @@ function renderAllNotes() {
   document.getElementById('note-count').textContent = filtered.length ? `(${filtered.length})` : '';
   if (!filtered.length) { el.innerHTML = '<div class="note-empty">No general or work notes yet.</div>'; return; }
   el.innerHTML = filtered.slice(0, 50).map(n => `
-    <div class="note-item">
+    <div class="note-item" data-tag="${esc(n.tag)}">
       <span class="note-tag tag-${n.tag}">${n.tag}</span>
       <div style="flex:1">
         <div class="note-content">${esc(n.text)}</div>
@@ -2354,6 +2422,8 @@ async function loadBriefing() {
   loadCurrentEvents();
   loadAIBriefing(mkt);
   loadTranscoBriefing(mkt);
+  loadDailyPicks(mkt, false);
+  loadWatchlistCard();
   const ts2 = document.getElementById('brief-ts');
   if (ts2) ts2.textContent = new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
 }
@@ -2393,6 +2463,8 @@ async function loadWeather() {
         <div>Precip ${c.precipitation}mm</div>
         <div>Houston, TX</div>
       </div>`;
+    const wts = document.getElementById('weather-ts');
+    if (wts) wts.textContent = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
   } catch(e) { el.innerHTML = '<div class="loading-msg">Weather unavailable — check connection</div>'; }
 }
 
@@ -2453,6 +2525,8 @@ async function loadCommodities() {
     }
     return `<div class="commodity-row"><span style="color:var(--text-dim)">${pairs[i].n}</span><span style="color:var(--text-muted)">—</span><span style="color:var(--text-muted)">unavailable</span></div>`;
   }).join('');
+  const cts = document.getElementById('commodity-ts');
+  if (cts) cts.textContent = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 
   return contextLines.length ? contextLines : null;
 }
@@ -2578,6 +2652,8 @@ async function loadStockMarket() {
     }
     return `<div class="commodity-row"><span style="color:var(--text-dim)">${tickers[i].n}</span><span style="color:var(--text-muted)">—</span><span style="color:var(--text-muted)">unavailable</span></div>`;
   }).join('');
+  const sts = document.getElementById('stocks-ts');
+  if (sts) sts.textContent = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 
   return contextLines.length ? contextLines : null;
 }
@@ -2669,7 +2745,7 @@ MAINTENANCE
 PRICING
 EXPECTED FLOW
 
-Under MAINTENANCE: any known or likely operational restrictions, scheduled maintenance windows, force majeures, or capacity constraints near those stations. Note which zone each station is in.
+Under MAINTENANCE: For each known or likely restriction near stations 65, 85, 134, 165, 210 — include: (a) the specific location name or milepost range, (b) the station/zone it affects, (c) estimated % of capacity affected or Mcf/d reduction if known, (d) the date window (start–end). If nothing specific is known, state expected maintenance season patterns for this time of year on the relevant segment. Always list at least 2 bullet points.
 Under PRICING: Transco basis levels vs Henry Hub by zone (Zone 3, 4, 5, 6, 6 NYC) — directional bias and key drivers for today. Use actual numbers where confident, ranges where not.
 Under EXPECTED FLOW: power burn outlook, weather demand, LNG feed gas impact, storage dynamics, and the key risk to watch today.
 
@@ -2851,7 +2927,6 @@ async function driveProcessMessage(msg) {
 
   history.push({ role:'user', content: msg });
 
-  const key = localStorage.getItem('jett_key');
   // Drive mode: smart routing applies here too
   const model = getActiveModel(msg);
   lastModelUsed = model;
@@ -2933,6 +3008,224 @@ function showToast(m) {
   const t = document.getElementById('toast');
   t.textContent = m; t.classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+// =============================================================
+// DAILY PICKS
+// =============================================================
+async function loadDailyPicks(marketContext, force) {
+  const el = document.getElementById('picks-body');
+  if (!hasAuth()) { el.innerHTML = '<div class="loading-msg">Add API key or proxy in Config</div>'; return; }
+
+  // 4-hour cache unless forced refresh
+  if (!force) {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem('jett_picks') || 'null');
+      if (cached && Date.now() - cached.ts < 14400000) { el.innerHTML = cached.html; return; }
+    } catch(_) {}
+  }
+
+  el.innerHTML = '<div class="loading-msg">Analyzing markets for picks...</div>';
+
+  // Pull live prices for energy + key stocks
+  const watchSymbols = [
+    { s:'XOM', n:'ExxonMobil' }, { s:'COP', n:'ConocoPhillips' },
+    { s:'WMB', n:'Williams Cos' }, { s:'KMI', n:'Kinder Morgan' },
+    { s:'LNG', n:'Cheniere Energy' }, { s:'XLE', n:'Energy ETF' },
+    { s:'NVDA', n:'Nvidia' }, { s:'SPY', n:'S&P 500' }
+  ];
+  const quotes = await Promise.allSettled(watchSymbols.map(w => fetchYahooQuote(w.s)));
+  const priceBlock = watchSymbols.map((w, i) => {
+    const q = quotes[i];
+    if (q.status === 'fulfilled' && q.value) {
+      return `${w.s} (${w.n}): $${q.value.price} (${q.value.up?'+':''}${q.value.chg}%)`;
+    }
+    return `${w.s}: unavailable`;
+  }).join('\n');
+
+  const today = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  const dataBlock = marketContext ? `\nBroader market context:\n${marketContext}\n` : '';
+
+  const prompt = `You are Jett giving Brett Kerr (natural gas scheduler, energy investor, Houston TX) 3 stock picks for today, ${today}.
+
+Live prices as of moments ago:
+${priceBlock}
+${dataBlock}
+Return EXACTLY 3 picks in this format (no extra text, just the 3 entries):
+
+TICKER | Company Name | DIRECTION | Price | Change
+Thesis: [2-sentence max — specific catalyst or technical reason for today]
+Tags: [comma-separated max 3 — e.g.: momentum, oversold, energy, earnings, pipeline, macro]
+
+DIRECTION must be one of: BULLISH, BEARISH, WATCH
+
+Prioritize energy/pipeline sector. Include at least 2 energy names. Be direct and specific — no hedging.`;
+
+  try {
+    const d = await anthropicFetch({
+      model: MODELS[currentModel === 'opus' ? 'opus' : 'sonnet'],
+      max_tokens: 400,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    if (d.error) throw new Error(`API ${d.error.type}: ${d.error.message}`);
+    trackTokens(d);
+    const raw = (d.content?.[0]?.text || '').trim();
+
+    // Parse structured response
+    const pickBlocks = raw.split(/\n(?=[A-Z]{1,5}\s*\|)/).filter(Boolean);
+    let html = '';
+    pickBlocks.forEach(block => {
+      const lines = block.trim().split('\n').filter(Boolean);
+      const header = lines[0] || '';
+      const parts = header.split('|').map(p => p.trim());
+      if (parts.length < 3) return;
+      const [ticker, company, direction, price, chg] = parts;
+      const thesisLine = lines.find(l => l.startsWith('Thesis:')) || '';
+      const tagsLine = lines.find(l => l.startsWith('Tags:')) || '';
+      const thesis = thesisLine.replace('Thesis:', '').trim();
+      const tags = tagsLine.replace('Tags:', '').split(',').map(t => t.trim()).filter(Boolean);
+      const dirClass = direction === 'BULLISH' ? 'bull' : direction === 'BEARISH' ? 'bear' : 'neutral';
+      const chgClass = chg && chg.includes('-') ? 'dn' : 'up';
+      html += `<div class="pick-item">
+        <div class="pick-header">
+          <div><span class="pick-ticker">${esc(ticker)}</span><span class="pick-name">${esc(company)}</span></div>
+          <div class="pick-price"><span class="${chgClass}">${esc(price||'')}</span> <span class="${chgClass}" style="font-size:9px">${esc(chg||'')}</span></div>
+        </div>
+        <div class="pick-thesis">${esc(thesis)}</div>
+        <div class="pick-tags">
+          <span class="pick-tag ${dirClass}">${esc(direction)}</span>
+          ${tags.map(t => `<span class="pick-tag neutral">${esc(t)}</span>`).join('')}
+        </div>
+      </div>`;
+    });
+
+    if (!html) html = `<div style="font-size:12.5px;font-weight:300;line-height:1.65">${esc(raw).replace(/\n/g,'<br>')}</div>`;
+    html += `<div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted);margin-top:8px">Not financial advice · AI analysis only</div>`;
+    sessionStorage.setItem('jett_picks', JSON.stringify({ ts: Date.now(), html }));
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<div class="loading-msg">Could not generate picks — ${esc(e.message)}</div>`; }
+}
+
+// =============================================================
+// WATCHLIST
+// =============================================================
+function getWatchlist() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('jett_watchlist') || 'null');
+    return Array.isArray(stored) ? stored : ['XOM','COP','WMB','LNG'];
+  } catch(_) { return ['XOM','COP','WMB','LNG']; }
+}
+function saveWatchlist(arr) { localStorage.setItem('jett_watchlist', JSON.stringify(arr)); }
+
+function addWatchlistTicker() {
+  const input = document.getElementById('watchlist-add-input');
+  const sym = (input.value || '').toUpperCase().trim().replace(/[^A-Z.=^]/g,'');
+  if (!sym) { showToast('Enter a ticker symbol'); return; }
+  const list = getWatchlist();
+  if (list.includes(sym)) { showToast(`${sym} already in watchlist`); return; }
+  if (list.length >= 12) { showToast('Max 12 tickers'); return; }
+  list.push(sym);
+  saveWatchlist(list);
+  input.value = '';
+  renderWatchlistConfig();
+  showToast(`${sym} added`);
+}
+
+function removeWatchlistTicker(sym) {
+  const list = getWatchlist().filter(s => s !== sym);
+  saveWatchlist(list);
+  renderWatchlistConfig();
+  showToast(`${sym} removed`);
+}
+
+function renderWatchlistConfig() {
+  const el = document.getElementById('watchlist-tickers-list');
+  if (!el) return;
+  const list = getWatchlist();
+  if (!list.length) { el.innerHTML = '<div class="loading-msg">No tickers added yet.</div>'; return; }
+  el.innerHTML = list.map(s =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border2)">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--accent)">${esc(s)}</span>
+      <button onclick="removeWatchlistTicker('${esc(s)}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:0 4px" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-muted)'">×</button>
+    </div>`
+  ).join('');
+}
+
+async function loadWatchlistCard() {
+  const el = document.getElementById('watchlist-body');
+  const list = getWatchlist();
+  if (!list.length) { el.innerHTML = '<div class="loading-msg">Add tickers in Config.</div>'; return; }
+  el.innerHTML = '<div class="loading-msg">Loading prices...</div>';
+  const quotes = await Promise.allSettled(list.map(s => fetchYahooQuote(s)));
+  el.innerHTML = list.map((s, i) => {
+    const q = quotes[i];
+    if (q.status === 'fulfilled' && q.value) {
+      const d = q.value;
+      const stale = d.stale ? ' <span style="color:var(--accent3);font-size:9px">⚠</span>' : '';
+      return `<div class="commodity-row"><span style="color:var(--text-dim)">${esc(s)}${stale}</span><span>$${d.price}</span><span class="${d.up?'up':'dn'}">${d.up?'▲':'▼'} ${Math.abs(d.chg)}%</span></div>`;
+    }
+    return `<div class="commodity-row"><span style="color:var(--text-dim)">${esc(s)}</span><span style="color:var(--text-muted)">—</span><span style="color:var(--text-muted)">unavailable</span></div>`;
+  }).join('');
+}
+
+// =============================================================
+// DEV QUEUE
+// =============================================================
+function getDevQueue() {
+  try { return JSON.parse(localStorage.getItem('jett_devqueue') || '[]'); } catch(_) { return []; }
+}
+function saveDevQueue(q) { localStorage.setItem('jett_devqueue', JSON.stringify(q)); }
+
+function addDevQueueItem() {
+  const input = document.getElementById('devqueue-input');
+  const text = (input.value || '').trim();
+  if (!text) { showToast('Describe the feature or bug first'); return; }
+  const q = getDevQueue();
+  q.unshift({ id: Date.now(), text, ts: new Date().toISOString(), status: 'pending' });
+  saveDevQueue(q);
+  input.value = '';
+  renderDevQueue();
+  showToast('Added to dev queue');
+}
+
+function deleteDevQueueItem(id) {
+  saveDevQueue(getDevQueue().filter(i => i.id !== id));
+  renderDevQueue();
+}
+
+function renderDevQueue() {
+  const el = document.getElementById('devqueue-list');
+  const countEl = document.getElementById('devqueue-count');
+  if (!el) return;
+  const q = getDevQueue();
+  const pending = q.filter(i => i.status === 'pending');
+  if (countEl) countEl.textContent = pending.length ? `${pending.length} pending` : '';
+  if (!q.length) { el.innerHTML = '<div class="loading-msg">Queue is empty.</div>'; return; }
+  el.innerHTML = q.slice(0, 10).map(item =>
+    `<div style="padding:7px 0;border-bottom:1px solid var(--border2);display:flex;gap:8px;align-items:flex-start">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:300;line-height:1.5">${esc(item.text)}</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted);margin-top:2px">${fmtTs(item.ts)} · ${item.status}</div>
+      </div>
+      <button onclick="deleteDevQueueItem(${item.id})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;flex-shrink:0;padding:0 2px" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-muted)'">×</button>
+    </div>`
+  ).join('');
+}
+
+// =============================================================
+// LOG SEARCH + FILTER
+// =============================================================
+function filterLog(query) {
+  const q = (query || '').toLowerCase().trim();
+  const tag = (document.getElementById('log-filter')?.value || 'all');
+  const allNoteEls = document.querySelectorAll('.note-item[data-tag]');
+  allNoteEls.forEach(el => {
+    const elTag = el.dataset.tag || '';
+    const elText = (el.textContent || '').toLowerCase();
+    const tagMatch = tag === 'all' || elTag === tag;
+    const textMatch = !q || elText.includes(q);
+    el.style.display = tagMatch && textMatch ? '' : 'none';
+  });
 }
 </script>
 </body>
