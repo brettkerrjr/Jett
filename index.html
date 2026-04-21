@@ -1214,7 +1214,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '8.6';
+const APP_VERSION = '8.7';
 let history = [];
 let notes = [];
 let events = [];
@@ -2794,17 +2794,17 @@ async function loadEnergyIntel() {
   const contextLines = [];
   let html = '';
 
-  // EIA v2 API helper
+  // EIA v2 API helper — cache-bust every call so SW/browser never serves stale data
   const eiaFetch = async (route, facets = {}, length = 3) => {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 15000);
     try {
-      // Build URL — don't encode bracket keys, EIA expects literal brackets
-      let url = `https://api.eia.gov/v2/${route}/data/?api_key=${encodeURIComponent(eiaKey)}&data[0]=value&sort[0][column]=period&sort[0][direction]=desc&length=${length}`;
+      // _= timestamp busts service worker cache and any upstream CDN/proxy
+      let url = `https://api.eia.gov/v2/${route}/data/?api_key=${encodeURIComponent(eiaKey)}&data[0]=value&sort[0][column]=period&sort[0][direction]=desc&length=${length}&_=${Date.now()}`;
       for (const [k, v] of Object.entries(facets)) {
         url += `&${k}=${encodeURIComponent(v)}`;
       }
-      const r = await fetch(url, { signal: ctrl.signal });
+      const r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d = await r.json();
       if (d.error) throw new Error(d.error);
@@ -2818,23 +2818,36 @@ async function loadEnergyIntel() {
 
   let hhErr = '', storErr = '';
 
-  // Henry Hub — NG futures front month (NYMEX, RNGC1) via EIA v2
+  // Henry Hub — daily spot price (RNGWHHD) via EIA v2 natural-gas/pri/sum
+  // Falls back to NYMEX front-month futures (RNGC1) if spot is unavailable
   try {
-    const rows = await eiaFetch('natural-gas/pri/fut', {
-      'facets[series][]': 'RNGC1'
-    }, 3);
+    let rows;
+    try {
+      rows = await eiaFetch('natural-gas/pri/sum', {
+        'facets[series][]': 'RNGWHHD'
+      }, 3);
+    } catch(_) {
+      // Fallback to futures series
+      rows = await eiaFetch('natural-gas/pri/fut', {
+        'facets[series][]': 'RNGC1'
+      }, 3);
+    }
     if (rows.length >= 1) {
-      const price = parseFloat(rows[0].value).toFixed(2);
-      const prev  = rows[1] ? parseFloat(rows[1].value) : null;
-      const chg   = prev ? (((parseFloat(price) - prev) / prev) * 100).toFixed(1) : null;
-      const isUp  = chg ? parseFloat(chg) >= 0 : true;
-      contextLines.push(`Henry Hub (NYMEX): $${price}/MMBtu${chg ? ` (${isUp?'+':''}${chg}% DoD)` : ''}`);
+      const price  = parseFloat(rows[0].value).toFixed(2);
+      const prev   = rows[1] ? parseFloat(rows[1].value) : null;
+      const chg    = prev ? (((parseFloat(price) - prev) / prev) * 100).toFixed(1) : null;
+      const isUp   = chg ? parseFloat(chg) >= 0 : true;
+      // Staleness check — warn if data period is more than 3 calendar days old
+      const periodDate = new Date(String(rows[0].period).slice(0,10) + 'T12:00:00');
+      const ageDays    = (Date.now() - periodDate.getTime()) / 86400000;
+      const staleWarn  = ageDays > 3 ? ` <span style="color:var(--accent3);font-size:9px">⚠ ${Math.floor(ageDays)}d old</span>` : '';
+      contextLines.push(`Henry Hub spot: $${price}/MMBtu${chg ? ` (${isUp?'+':''}${chg}% DoD)` : ''}`);
       html += `<div class="commodity-row">
-        <span style="color:var(--text-dim)">Henry Hub</span>
+        <span style="color:var(--text-dim)">Henry Hub${staleWarn}</span>
         <span>$${price}/MMBtu</span>
         <span class="${isUp?'up':'dn'}">${chg?(isUp?'▲':'▼')+' '+Math.abs(chg)+'%':'—'}</span>
       </div>`;
-      html += `<div style="font-size:10px;color:var(--text-dim);padding:0 0 8px">${fmtEiaDate(rows[0].period)}</div>`;
+      html += `<div style="font-size:10px;color:var(--text-dim);padding:0 0 8px">EIA spot · ${fmtEiaDate(rows[0].period)}</div>`;
     }
   } catch(e) { hhErr = e.message; }
 
