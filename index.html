@@ -1214,7 +1214,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '8.7';
+const APP_VERSION = '8.8';
 let history = [];
 let notes = [];
 let events = [];
@@ -2799,8 +2799,8 @@ async function loadEnergyIntel() {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 15000);
     try {
-      // _= timestamp busts service worker cache and any upstream CDN/proxy
-      let url = `https://api.eia.gov/v2/${route}/data/?api_key=${encodeURIComponent(eiaKey)}&data[0]=value&sort[0][column]=period&sort[0][direction]=desc&length=${length}&_=${Date.now()}`;
+      // EIA rejects unknown params — use cache:'no-store' on the fetch instead
+      let url = `https://api.eia.gov/v2/${route}/data/?api_key=${encodeURIComponent(eiaKey)}&data[0]=value&sort[0][column]=period&sort[0][direction]=desc&length=${length}`;
       for (const [k, v] of Object.entries(facets)) {
         url += `&${k}=${encodeURIComponent(v)}`;
       }
