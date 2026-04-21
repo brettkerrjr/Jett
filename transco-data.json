@@ -1,9 +1,53 @@
 {
-  "fetched": "2026-04-16T00:00:00Z",
-  "date": "Thursday, April 16, 2026",
-  "maintenance": ["No public notices found for this period"],
-  "pricing": ["No public notices found for this period"],
-  "flow": ["No public notices found for this period"],
-  "sources": ["placeholder — workflow not yet run"],
+  "fetched": "2026-04-21T00:00:00Z",
+  "date": "Tuesday, April 21, 2026",
+  "maintenance": [
+    "Station 85 (Zone 4) Main Unit 4 Exchange in progress — Job 124601, effective April 17, 2026; secondary and interruptible capacity impacts expected at this key Zone 4 compressor station",
+    "Station 35 (mainline MP 327.27) compressor outage April 7 — capacity restricted to ~80% of design; primary firm cuts of 15–20% reported per Notice 16654056; TSB incorporated into current constraint notices",
+    "Station 160 maintenance completed April 7, 2026 — Job 1211814",
+    "Station 62-23 SELA tool runs (ILI inspection) completed April 1, 2026 — Job 1211791; SELA segment flows showing zero available secondary capacity in current constraint notices",
+    "Transco 2026 Major Construction and Maintenance Projects schedule updated March 12, 2026 (Notice 16650315) — some 2026 projects will affect IT and secondary FT services; ILI (inline inspection) activities section newly added; all dates subject to change",
+    "Southeast Supply Enhancement (SSE) — 1.6 Bcf/d expansion project relieving capacity constraints near Station 165 (VA) through Carolinas, Georgia, and Alabama — FERC-certified January 2026; construction targeted Q4 2026, in-service Q4 2027; $1.53 billion project fully subscribed",
+    "Northeast Supply Enhancement — groundbreaking April 14, 2026 for NY/NJ/PA Transco expansion; first new pipe in New York state in over a decade per Williams CEO",
+    "Force majeure Station 115 (unplanned equipment outage) — February 11–17, 2026; resolved",
+    "Force majeure Station 517 MU5 — December 14, 2025 through January 3, 2026; mainline flows limited to approximately 2,375 Mdth/d through that location during outage; resolved"
+  ],
+  "pricing": [
+    "Transco Zone 6 NY spot: $2.43/MMBtu for April 20, 2026 delivery (+34.8% day-over-day) — EIA daily prices",
+    "Henry Hub spot: $2.81/MMBtu for April 20, 2026 (+3.8% day-over-day)",
+    "Algonquin Citygate (New England): $2.65/MMBtu (+17.8%)",
+    "TETCO M3 (Mid-Atlantic, proxy for Zone 6 non-NY): $2.40/MMBtu (+25.5%)",
+    "Houston Ship Channel: $2.30/MMBtu (+3.7%); Henry Hub-to-Zone 6 NY spread approximately +$0.38/MMBtu on April 20",
+    "Transco Zone 3 (Station 65) and Zone 4 (Station 85) daily spot prices are paywalled at NGI/ICIS — not publicly accessible for April 21, 2026",
+    "Zone 4 basis futures traded on ICE (product 6590165: Transco Station 85 Zone 4 Basis Future); Zone 5 basis on ICE product 42944091",
+    "EIA April 2026 Short-Term Energy Outlook trimmed full-year 2026 Henry Hub forecast citing near-average storage trajectory"
+  ],
+  "flow": [
+    "Imbalance OFO active April 18–20 in Zones 5 and 6 (Notice 16765804): 7% or 1,000 dth/zone tolerance; minimum $50/dt/day penalty per Tariff Section 52; retro scheduling available; Transco cited 'limited flexibility due to shipper imbalance trends and current storage inventory levels'",
+    "Current Market and Production Constraints update (Notice 16780975, effective April 22 gas day): CS 90 (Zone 4) — 500 Mdt/d secondary S-to-N; TSB MP 890.58–1050 (Zone 4) — 500 Mdt/d secondary; CS 135 (Zone 5) — 500 Mdt/d secondary S-to-N; Marcus Hook Lateral (Zone 6) — 200 Mdt/d secondary; Trenton Woodbury Lateral (Zone 6) — 200 Mdt/d secondary",
+    "HBLV swing service effectively unavailable system-wide: 0 Mdt/d secondary in Zones 2–6 per current notice; Zone 1 shows only 1 Mdt/d — no meaningful swing buffer",
+    "SELA segment (Zones 3–4) showing zero available secondary capacity in current constraint notices for bidirectional flows",
+    "Central Penn Line northbound: approximately 1,112 Mdt/d primary available into Zone 6 per March baseline constraint notice",
+    "Recurring imbalance OFOs throughout April (April 1–6, April 9–13, April 16–20) — pattern indicates persistent system tightness entering spring shoulder season",
+    "EIA reports natural gas spot prices fell at most U.S. locations during week of April 16–23, 2026, consistent with spring demand moderation",
+    "Location-specific OFO risk: Transco issued Off-Rate Underperformance notice March 18 at LaSalle Tilden (Zone 1) — shippers warned volumes may be cut to actual flows if production does not recover"
+  ],
+  "sources": [
+    "PipeRiv Transco Critical Notices — https://www.piperiv.com/ip/transco/critical-notices",
+    "PipeRiv Notice 16780975 (Market and Production Constraints, effective April 22 gas day) — https://www.piperiv.com/ip/transco/notice/16780975",
+    "PipeRiv Notice 16765804 (OFO Imbalance Zones 5 and 6, April 18–20, 2026) — https://www.piperiv.com/ip/transco/notice/16765804",
+    "PipeRiv Notice 16650315 (Transco 2026 Major Construction and Maintenance Schedule) — https://www.piperiv.com/feed/notice/transco/16650315/41993",
+    "PipeRiv Notice 16654056 (Station 35 Compressor Outage, April 7, 2026) — https://www.piperiv.com/ip/transco/notice/16654056",
+    "PipeRiv Notice 16668421 (Location Off Rate Underperformance, LaSalle Tilden Zone 1, March 18) — https://www.piperiv.com/feed/notice/transco/16668421/42347",
+    "EIA Daily Energy Prices, April 20, 2026 — https://www.eia.gov/todayinenergy/prices.php",
+    "EIA Natural Gas Weekly Update — https://www.eia.gov/naturalgas/weekly/",
+    "EIA April 2026 Short-Term Energy Outlook — https://www.eia.gov/outlooks/steo/",
+    "S&P Global: EIA trims 2026 US spot gas price forecasts, April 7, 2026 — https://www.spglobal.com/energy/en/news-research/latest-news/electric-power/040726-us-eia-trims-2026-us-spot-gas-price-forecasts-on-near-average-storage-expectation",
+    "PGJ Online: Transco Force Majeure Station 517 (December 2025) — https://pgjonline.com/news/2025/december/transco-declares-force-majeure-at-station-517-limits-mainline-gas-flows",
+    "PGJ Online: Transco SSE FERC Approval (January 2026) — https://pgjonline.com/news/2026/january/transco-approved-to-build-55-mile-southeast-supply-enhancement-pipeline",
+    "NGI: Transco SSE FERC Green Light — https://naturalgasintel.com/news/transco-gets-ferc-green-light-to-build-16-bcfd-southeast-natural-gas-supply-expansion/",
+    "Daily Energy Insider: Williams Transco Northeast Supply Enhancement groundbreaking — https://dailyenergyinsider.com/news/46720-williams-places-transco-pipeline-expansion-project-into-service/",
+    "Williams 1Line Transco Critical Notices (EBB) — https://www.1line.williams.com/Transco/info-postings/notices/critical-notices.html"
+  ],
   "data_quality": "public_sources"
 }
