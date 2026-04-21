@@ -1180,7 +1180,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '8.3';
+const APP_VERSION = '8.4';
 let history = [];
 let notes = [];
 let events = [];
@@ -1699,7 +1699,7 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 // Share via Web Share API (iOS → Save to Files/iCloud) or fallback to download
 async function shareOrExport() {
   const data = {
-    version: 'jett_v7',
+    version: 'jett_v' + APP_VERSION,
     exported: new Date().toISOString(),
     notes, events, history,
     drafts: getDrafts(),
@@ -2782,8 +2782,8 @@ async function loadTranscoBriefing() {
 
       const renderSection = (title, items) => {
         if (!items || !items.length) return '';
-        return `<div class="transco-section"><div class="transco-section-title">${title}</div>` +
-          items.map(item => `<div class="transco-bullet">• ${esc(item)}</div>`).join('') +
+        return `<div class="transco-section"><div class="transco-section-head">${title}</div>` +
+          items.map(item => `<div class="transco-bullet">${esc(item)}</div>`).join('') +
           '</div>';
       };
 
@@ -2794,7 +2794,7 @@ async function loadTranscoBriefing() {
 
       if (data.sources && data.sources.length && data.sources[0] !== 'placeholder — workflow not yet run') {
         html += `<div class="transco-section" style="margin-top:8px;border-top:1px solid var(--border2);padding-top:8px">
-          <div class="transco-section-title" style="color:var(--text-muted)">Sources</div>` +
+          <div class="transco-section-head" style="color:var(--text-muted)">Sources</div>` +
           data.sources.map(s => `<div class="transco-bullet" style="color:var(--text-muted);font-size:11px">• ${esc(s)}</div>`).join('') +
           '</div>';
       }
