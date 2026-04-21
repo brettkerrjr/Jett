@@ -1,5 +1,5 @@
 {
-  "fetched": "2026-04-21T20:00:00Z",
+  "fetched": "2026-04-21T21:00:00Z",
   "date": "Tuesday, April 21, 2026",
   "maintenance": [
     "Station 85 (Zone 4) Main Unit 4 Exchange in progress — Job 124601, effective April 17, 2026; secondary and interruptible capacity impacts expected at this key Zone 4 compressor station",
@@ -33,7 +33,11 @@
     "Recurring imbalance OFOs throughout April (April 1–6, April 9–13, April 16–20) — pattern indicates persistent system tightness entering spring shoulder season",
     "EIA reports natural gas spot prices fell at most U.S. locations during week of April 16–23, 2026, consistent with spring demand moderation",
     "Location-specific OFO risk: Transco issued Off-Rate Underperformance notice March 18 at LaSalle Tilden (Zone 1) — shippers warned volumes may be cut to actual flows if production does not recover",
+    "EIA storage report (week ending 04/10/26): working gas 1,970 Bcf, net injection +59 Bcf; 108 Bcf above 5-year average; 126 Bcf above year-ago; South Central region injected +32 Bcf (salt +17, nonsalt +15), Midwest +13, East +6",
+    "Projected EIA injection for week ending 04/17/26: ~94 Bcf per NGI consensus — would further expand surplus vs. 5-year norm",
     "Storage entered injection season at approximately 1.9 Tcf (~3% above five-year average); EIA STEO projects storage to reach ~4.0 Tcf by end of October 2026, approximately 6% above seasonal normal",
+    "Dry gas production revised to 109.3 Bcf/d; LNG feedgas demand ~20 Bcf/d; Mexican pipeline exports ~6.5 Bcf/d — combined non-domestic demand providing floor support",
+    "NYMEX May 2026 contract: ~$2.61–$2.64/MMBtu as of mid-April; approximately $0.13 below prior week average; Henry Hub intraday 04/21/26 ~$2.69/MMBtu per TradingEconomics",
     "Above-normal temperatures forecast across Gulf Coast and Southeast through late April 2026 — mild spring shoulder season suppressing heating and early cooling loads; Florida/Southeast demand estimated ~24.3 Bcf/d",
     "Florida Gas Transmission (adjacent system to Transco Zone 3): scheduled maintenance at Compressor Stations 6 and 7 limiting capacity to 150 MMcf (CS6) and 300 MMcf (CS7); downstream Florida volumes have strengthened despite maintenance"
   ],
@@ -48,6 +52,10 @@
     "EIA Natural Gas Weekly Update — https://www.eia.gov/naturalgas/weekly/",
     "EIA April 2026 Short-Term Energy Outlook — https://www.eia.gov/outlooks/steo/",
     "EIA Weekly Natural Gas Storage Report — https://www.eia.gov/naturalgas/storage/",
+    "Premier Energy Mgmt — EIA Storage Week Ending 04/10/26 — https://www.premierenergymanagement.com/post/eia-natural-gas-storage-report-week-ending-april-10-2026",
+    "Energy Edge Consulting — Natural Gas Weekly Storage Report 4/16/2026 — https://energyedge.com/natural-gas-weekly-storage-report-4-16-2026/",
+    "NGI: Upcoming Storage Injection Could Crush 5-Year Norm — https://naturalgasintel.com/news/upcoming-natural-gas-storage-injection-could-crush-5-year-norm-ballooning-lower-48-surplus/",
+    "KilowattLogic: First 2026 Injection +36 Bcf — https://kilowattlogic.com/news/eia-natural-gas-storage-first-injection-36-bcf-april-2026",
     "AGA Natural Gas Market Indicators April 16, 2026 — https://www.aga.org/research-policy/resource-library/natural-gas-market-indicators-april-16-2026/",
     "NGI: Appalachia Drops, Southeast Gains as Natural Gas Forwards Reflect Divided Demand — https://naturalgasintel.com/news/appalachia-drops-southeast-gains-as-natural-gas-forwards-reflect-divided-demand/",
     "NGI: Natural Gas Price Spreads Track Power Demand as Data Center Load Grows — https://naturalgasintel.com/news/natural-gas-price-spreads-track-power-demand-as-data-center-load-grows/",
