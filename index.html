@@ -523,6 +523,16 @@ select.finput { appearance:none; cursor:pointer; }
 .deep-btn:hover { background:rgba(192,132,252,0.12); border-color:var(--accent4); }
 .deep-btn.active { background:rgba(192,132,252,0.15); border-color:var(--accent4); box-shadow:0 0 14px rgba(192,132,252,0.2); }
 
+.dev-btn {
+  padding:0 10px; height:40px; border-radius:4px;
+  border:1px solid rgba(106,171,123,0.3); background:rgba(106,171,123,0.05);
+  color:var(--accent); cursor:pointer; font-family:'Share Tech Mono',monospace;
+  font-size:9px; letter-spacing:1px; white-space:nowrap;
+  transition:all 0.2s; flex-shrink:0;
+}
+.dev-btn:hover { background:rgba(106,171,123,0.12); border-color:var(--accent); }
+.dev-btn.active { background:rgba(106,171,123,0.15); border-color:var(--accent); box-shadow:0 0 14px rgba(106,171,123,0.25); }
+
 /* ---- QUICK ACTION CHIPS ---- */
 .quick-actions {
   flex-shrink:0; display:flex; gap:6px; padding:4px 14px 2px;
@@ -847,6 +857,7 @@ select.finput { appearance:none; cursor:pointer; }
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>
         DRIVE
       </button>
+      <button class="dev-btn"  id="dev-btn"  onclick="toggleDevMode()"  title="Dev Mode — Jett can read/write repo files">DEV</button>
       <button class="deep-btn" id="deep-btn" onclick="toggleDeepMode()" title="One-shot Opus — go deep on next message">DEEP</button>
       <textarea id="txtInput" rows="1" placeholder="Message Jett..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
       <button class="ibtn" id="mic-btn" onclick="toggleVoice()" title="Voice">
@@ -930,7 +941,7 @@ select.finput { appearance:none; cursor:pointer; }
       </div>
 
       <div class="card card-accent-blue">
-        <div class="card-header"><span>⬡ Weather — Houston, TX</span><span id="weather-ts" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted)"></span></div>
+        <div class="card-header"><span>⬡ Weather</span><span id="weather-ts" style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text-muted)"></span></div>
         <div class="card-body" id="weather-body"><div class="loading-msg">—</div></div>
       </div>
 
@@ -1040,6 +1051,22 @@ select.finput { appearance:none; cursor:pointer; }
           </div>
           <div class="hint">Free key at <span style="color:var(--accent)">eia.gov/opendata</span>. Unlocks live Henry Hub price and weekly natural gas storage data.</div>
           <button class="btn btn-orange" onclick="saveEiaKey()">▶ SAVE EIA KEY</button>
+        </div>
+      </div>
+
+      <div class="card card-accent-green">
+        <div class="card-header">◈ GitHub Access (Dev Mode)</div>
+        <div class="card-body">
+          <div class="field">
+            <label class="flabel">Personal Access Token</label>
+            <input type="password" class="finput" id="github-pat" placeholder="ghp_..."/>
+            <div class="api-status" id="github-status"><div class="dot"></div><span id="github-status-txt">No token entered</span></div>
+          </div>
+          <div class="hint">Create a PAT at <span style="color:var(--accent)">github.com/settings/tokens</span> with <span style="color:var(--accent2)">Contents: write</span> scope on the <span style="color:var(--accent2)">brettkerrjr/Jett</span> repo. Enables the DEV button in chat — Jett can then read and edit its own code.</div>
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <button class="btn btn-green" style="flex:1" onclick="saveGithubPat()">▶ SAVE TOKEN</button>
+            <button onclick="clearGithubPat()" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:0 12px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:9px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">CLEAR</button>
+          </div>
         </div>
       </div>
 
@@ -1187,7 +1214,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '8.5';
+const APP_VERSION = '8.6';
 let history = [];
 let notes = [];
 let events = [];
@@ -1398,7 +1425,20 @@ DAILY BRIEFING FORMAT (when asked):
 1. Upcoming — anything in the next 7 days
 2. Market Pulse — nat gas color + relevant energy news
 3. On The Radar — logged items needing attention
-4. Weather if relevant`;
+4. Weather if relevant${devMode ? `
+
+DEV MODE ACTIVE — You have direct read/write access to the Jett repository (brettkerrjr/Jett) on GitHub via these tools:
+- read_file(path): Returns full file content + SHA. ALWAYS call this before write_file.
+- write_file(path, content, message): Writes the complete file. content must be the ENTIRE file, not a diff.
+- list_files(path): Lists files in a directory (empty string = root).
+
+CRITICAL RULES:
+1. ALWAYS read_file before write_file — you need current content + SHA.
+2. index.html is ~3000+ lines — read it fully, make targeted edits in memory, write the complete modified file back.
+3. When editing index.html, bump APP_VERSION, version.json, and sw.js VERSION together (e.g. current + 0.1).
+4. After write_file succeeds, GitHub Pages deploys in ~2 minutes — confirm to Brett.
+5. If a write is destructive or large in scope, confirm with Brett before executing.
+6. Never write index.html with content shorter than 50,000 characters — that means truncation.` : ''}`;
 }
 
 // =============================================================
@@ -1445,6 +1485,8 @@ window.onload = () => {
   if (key) { document.getElementById('api-key').value = key; setKeyStatus(true); }
   const eiaKey = localStorage.getItem('jett_eia_key');
   if (eiaKey) { document.getElementById('eia-key').value = eiaKey; setEiaKeyStatus(true); }
+  const githubPat = localStorage.getItem('jett_github_pat');
+  if (githubPat) setGithubStatus(true);
   // Register service worker for offline cache + update detection
   registerSW();
   // Poll version.json for update detection (reliable on iOS PWA)
@@ -1598,6 +1640,104 @@ function saveSettings() {
   s.autoSpeak = document.getElementById('auto-speak').value;
   localStorage.setItem('jett_settings', JSON.stringify(s));
   showToast('Voice settings saved');
+}
+
+function saveGithubPat() {
+  const pat = document.getElementById('github-pat').value.trim();
+  if (!pat) { showToast('Enter a token'); return; }
+  if (!pat.startsWith('ghp_') && !pat.startsWith('github_pat_')) { showToast('Token should start with ghp_ or github_pat_'); return; }
+  localStorage.setItem('jett_github_pat', pat);
+  setGithubStatus(true);
+  showToast('GitHub token saved');
+}
+function clearGithubPat() {
+  localStorage.removeItem('jett_github_pat');
+  document.getElementById('github-pat').value = '';
+  setGithubStatus(false);
+  if (devMode) { devMode = false; updateDevBtn(false); }
+  showToast('GitHub token cleared');
+}
+function setGithubStatus(ok) {
+  const el = document.getElementById('github-status');
+  if (!el) return;
+  el.className = 'api-status ' + (ok ? 'ok' : '');
+  document.getElementById('github-status-txt').textContent = ok ? 'Token saved — DEV mode available' : 'No token entered';
+}
+
+function toggleDevMode() {
+  if (!localStorage.getItem('jett_github_pat')) {
+    showToast('Add a GitHub token in Config first');
+    switchTab('settings');
+    return;
+  }
+  devMode = !devMode;
+  updateDevBtn(devMode);
+  showToast(devMode ? 'Dev Mode on — Jett can edit the repo' : 'Dev Mode off');
+}
+function updateDevBtn(active) {
+  const btn = document.getElementById('dev-btn');
+  if (!btn) return;
+  btn.classList.toggle('active', active);
+  btn.textContent = active ? 'DEV ●' : 'DEV';
+}
+
+async function execRepoTool(name, input) {
+  const pat = localStorage.getItem('jett_github_pat');
+  if (!pat) return JSON.stringify({ error: 'No GitHub token configured. Add one in Config → GitHub Access.' });
+  const headers = {
+    'Authorization': `Bearer ${pat}`,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+  try {
+    if (name === 'list_files') {
+      const path = input.path || '';
+      const r = await fetch(`${GITHUB_API}/${path}`, { headers });
+      if (!r.ok) throw new Error(`GitHub ${r.status}`);
+      const items = await r.json();
+      const list = Array.isArray(items)
+        ? items.map(i => `${i.type === 'dir' ? '[dir]' : '[file]'} ${i.name} (${i.size || 0} bytes)`).join('\n')
+        : JSON.stringify(items);
+      return `Files in /${path || ''}:\n${list}`;
+    }
+
+    if (name === 'read_file') {
+      const r = await fetch(`${GITHUB_API}/${input.path}`, { headers });
+      if (!r.ok) throw new Error(`GitHub ${r.status} — ${input.path} not found`);
+      const data = await r.json();
+      const content = decodeURIComponent(escape(atob(data.content.replace(/\n/g, ''))));
+      return JSON.stringify({ path: input.path, sha: data.sha, size: content.length, content });
+    }
+
+    if (name === 'write_file') {
+      // Safety: refuse suspiciously short content on known large files
+      const largeFiles = ['index.html'];
+      if (largeFiles.includes(input.path) && input.content.length < 5000) {
+        return JSON.stringify({ error: `Safety check: ${input.path} content is only ${input.content.length} chars — likely truncated. Read the file first, make targeted edits, write the complete file.` });
+      }
+      // Get current SHA
+      let sha = '';
+      try {
+        const existing = await fetch(`${GITHUB_API}/${input.path}`, { headers });
+        if (existing.ok) { const d = await existing.json(); sha = d.sha; }
+      } catch(_) {}
+      const body = {
+        message: input.message || `jett: update ${input.path}`,
+        content: btoa(unescape(encodeURIComponent(input.content))),
+        ...(sha ? { sha } : {})
+      };
+      const r = await fetch(`${GITHUB_API}/${input.path}`, {
+        method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!r.ok) { const err = await r.json(); throw new Error(`GitHub ${r.status}: ${err.message}`); }
+      showToast(`✓ ${input.path} committed to main`);
+      return JSON.stringify({ success: true, path: input.path, committed: true });
+    }
+  } catch(e) {
+    return JSON.stringify({ error: e.message });
+  }
+  return JSON.stringify({ error: `Unknown tool: ${name}` });
 }
 
 function saveModelSettings() {
@@ -2065,6 +2205,29 @@ const MODELS = {
 
 const WEB_SEARCH_TOOL = { type: 'web_search_20250305', name: 'web_search' };
 
+const REPO_TOOLS = [
+  {
+    name: 'read_file',
+    description: 'Read a file from the Jett GitHub repository (brettkerrjr/Jett). Returns full content and SHA needed for writes.',
+    input_schema: { type:'object', properties: { path:{ type:'string', description:'File path, e.g. "index.html" or "sw.js"' } }, required:['path'] }
+  },
+  {
+    name: 'write_file',
+    description: 'Write/update a file in the Jett GitHub repository. ALWAYS call read_file first — you need the full current content and SHA.',
+    input_schema: { type:'object', properties: { path:{ type:'string' }, content:{ type:'string', description:'Complete file content — not a diff, the entire file' }, message:{ type:'string', description:'Commit message' } }, required:['path','content','message'] }
+  },
+  {
+    name: 'list_files',
+    description: 'List files in a directory of the Jett repository.',
+    input_schema: { type:'object', properties: { path:{ type:'string', description:'Directory path, empty string for root' } } }
+  }
+];
+
+const GITHUB_REPO = 'brettkerrjr/Jett';
+const GITHUB_API  = `https://api.github.com/repos/${GITHUB_REPO}/contents`;
+
+let devMode = false;
+
 const DEEP_TRIGGERS = [
   'analyze','analyse','strategy','think through','help me decide','pros and cons',
   'deep dive','walk me through','explain why','what do you think about','opinion on',
@@ -2184,7 +2347,11 @@ async function callClaude(userMsg, systemOverride) {
   setActiveBadge(model);
 
   const useWebSearch = getSettings().webSearch !== 'off';
-  const tools = useWebSearch ? [WEB_SEARCH_TOOL] : undefined;
+  const tools = [
+    ...(useWebSearch ? [WEB_SEARCH_TOOL] : []),
+    ...(devMode ? REPO_TOOLS : [])
+  ];
+  const toolsParam = tools.length ? tools : undefined;
 
   history.push({ role:'user', content: userMsg });
 
@@ -2198,7 +2365,7 @@ async function callClaude(userMsg, systemOverride) {
         max_tokens: model === 'opus' ? 2048 : 1024,
         system: systemOverride || buildSystemPrompt(),
         messages,
-        ...(tools ? { tools } : {})
+        ...(toolsParam ? { tools: toolsParam } : {})
       });
 
       if (data.error) {
@@ -2214,20 +2381,37 @@ async function callClaude(userMsg, systemOverride) {
 
       if (data.stop_reason !== 'tool_use') break;
 
-      // Show searching indicator in place of typing dots
-      const typingEl = document.getElementById('typing');
-      if (typingEl) typingEl.innerHTML = `<div class="bubble" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--accent2);letter-spacing:1px">⌕ SEARCHING...</div>`;
-
-      // Anthropic executes web_search server-side — send back tool_results to continue
       messages.push({ role: 'assistant', content: data.content });
-      const toolResults = data.content
-        .filter(b => b.type === 'tool_use')
-        .map(tu => ({ type: 'tool_result', tool_use_id: tu.id, content: '' }));
+
+      const toolResults = [];
+      for (const block of data.content) {
+        if (block.type !== 'tool_use') continue;
+
+        const typingEl = document.getElementById('typing');
+        let label = '⌕ SEARCHING...';
+        let resultContent = '';
+
+        if (block.name === 'web_search') {
+          // Server-side — Anthropic executes the search, empty result continues the loop
+          label = '⌕ SEARCHING...';
+        } else if (block.name === 'read_file') {
+          label = `⌕ READING ${block.input?.path || ''}...`;
+          resultContent = await execRepoTool('read_file', block.input);
+        } else if (block.name === 'write_file') {
+          label = `⌕ WRITING ${block.input?.path || ''}...`;
+          resultContent = await execRepoTool('write_file', block.input);
+        } else if (block.name === 'list_files') {
+          label = `⌕ LISTING ${block.input?.path || '/'}...`;
+          resultContent = await execRepoTool('list_files', block.input);
+        }
+
+        if (typingEl) typingEl.innerHTML = `<div class="bubble" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--accent2);letter-spacing:1px">${label}</div>`;
+        toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: resultContent });
+      }
       messages.push({ role: 'user', content: toolResults });
     }
 
     const reply = data.content?.find(b => b.type === 'text')?.text || 'No response received.';
-    trackTokens(data);
     history.push({ role:'assistant', content: reply, model });
     saveHistory();
     parseChatActions(reply);
@@ -2491,9 +2675,31 @@ function buildMarketContext(commodityResult, energyResult, stockResult) {
 
 async function loadWeather() {
   const el = document.getElementById('weather-body');
-  el.innerHTML = '<div class="loading-msg">Fetching...</div>';
-  // Houston, TX — hardcoded to skip geocoding step
-  const lat = 29.7604, lon = -95.3698;
+  el.innerHTML = '<div class="loading-msg">Getting location...</div>';
+
+  let lat = 29.7604, lon = -95.3698, cityName = 'Houston, TX';
+
+  try {
+    const pos = await new Promise((resolve, reject) =>
+      navigator.geolocation
+        ? navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000, maximumAge: 300000 })
+        : reject(new Error('not supported'))
+    );
+    lat = pos.coords.latitude;
+    lon = pos.coords.longitude;
+    // Reverse geocode for readable city name
+    try {
+      const gr = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+      if (gr.ok) {
+        const gd = await gr.json();
+        const city  = gd.address?.city || gd.address?.town || gd.address?.village || gd.address?.county || '';
+        const state = gd.address?.state_code || '';
+        cityName = city ? `${city}${state ? ', '+state : ''}` : 'Current Location';
+      }
+    } catch(_) { cityName = 'Current Location'; }
+  } catch(_) { /* geolocation denied/unavailable — fall back to Houston */ }
+
+  el.innerHTML = '<div class="loading-msg">Fetching weather...</div>';
   try {
     const wr = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,precipitation,weathercode,windspeed_10m,relativehumidity_2m&temperature_unit=fahrenheit&windspeed_unit=mph`);
     if (!wr.ok) throw new Error('API error');
@@ -2505,11 +2711,11 @@ async function loadWeather() {
         <div>Humidity ${c.relativehumidity_2m}%</div>
         <div>Wind ${Math.round(c.windspeed_10m)} mph</div>
         <div>Precip ${c.precipitation}mm</div>
-        <div>Houston, TX</div>
+        <div>${esc(cityName)}</div>
       </div>`;
     const wts = document.getElementById('weather-ts');
     if (wts) wts.textContent = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-  } catch(e) { el.innerHTML = '<div class="loading-msg">Weather unavailable — check connection</div>'; }
+  } catch(e) { el.innerHTML = `<div class="loading-msg">Weather unavailable — ${esc(e.message)}</div>`; }
 }
 
 function wDesc(c) {
