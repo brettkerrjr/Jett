@@ -1093,11 +1093,18 @@ select.finput { appearance:none; cursor:pointer; }
               <option value="off">Off — Always use default model only</option>
             </select>
           </div>
+          <div class="field">
+            <label class="flabel">Web Search</label>
+            <select class="finput" id="web-search">
+              <option value="on">On — Jett can browse for current info</option>
+              <option value="off">Off — No internet access</option>
+            </select>
+          </div>
           <div class="hint">
             <span style="color:var(--accent4)">Auto-routing</span> escalates to Opus on complex queries even on Sonnet default.<br><br>
             <span style="color:var(--accent)">DEEP button</span> in chat = one-shot Opus for next message only.<br><br>
             <span style="color:var(--accent)">Header badge</span> shows which model is active — tap to toggle.<br><br>
-            <span style="color:var(--text-dim)">Drive Mode</span> uses smart routing. Opus answers show a purple accent.
+            <span style="color:var(--text-dim)">Web Search</span> uses Anthropic's built-in search — adds a small cost per search turn.
           </div>
           <button class="btn btn-blue" onclick="saveModelSettings()">▶ SAVE MODEL SETTINGS</button>
         </div>
@@ -1180,7 +1187,7 @@ select.finput { appearance:none; cursor:pointer; }
 // =============================================================
 // STATE
 // =============================================================
-const APP_VERSION = '8.4';
+const APP_VERSION = '8.5';
 let history = [];
 let notes = [];
 let events = [];
@@ -1425,6 +1432,9 @@ window.onload = () => {
   if (s.smartRouting) {
     document.getElementById('smart-routing').value = s.smartRouting;
   }
+  if (s.webSearch) {
+    document.getElementById('web-search').value = s.webSearch;
+  }
 
   const proxyUrl = localStorage.getItem('jett_proxy_url');
   const proxyToken = localStorage.getItem('jett_proxy_token');
@@ -1594,6 +1604,7 @@ function saveModelSettings() {
   const s = getSettings();
   s.defaultModel = document.getElementById('default-model').value;
   s.smartRouting = document.getElementById('smart-routing').value;
+  s.webSearch    = document.getElementById('web-search').value;
   currentModel = s.defaultModel;
   updateModelBadge(currentModel);
   localStorage.setItem('jett_settings', JSON.stringify(s));
@@ -2052,6 +2063,8 @@ const MODELS = {
   opus:   'claude-opus-4-6'
 };
 
+const WEB_SEARCH_TOOL = { type: 'web_search_20250305', name: 'web_search' };
+
 const DEEP_TRIGGERS = [
   'analyze','analyse','strategy','think through','help me decide','pros and cons',
   'deep dive','walk me through','explain why','what do you think about','opinion on',
@@ -2170,29 +2183,54 @@ async function callClaude(userMsg, systemOverride) {
   lastModelUsed = model;
   setActiveBadge(model);
 
+  const useWebSearch = getSettings().webSearch !== 'off';
+  const tools = useWebSearch ? [WEB_SEARCH_TOOL] : undefined;
+
   history.push({ role:'user', content: userMsg });
 
   try {
-    const data = await anthropicFetch({
-      model: MODELS[model],
-      max_tokens: model === 'opus' ? 2048 : 1024,
-      system: systemOverride || buildSystemPrompt(),
-      messages: history.slice(-40).map(m => ({role: m.role, content: m.content}))
-    });
-    if (data.error) {
-      history.pop();
-      const t = data.error.type || '';
-      if (t === 'authentication_error') return "API key rejected. Double-check it in Config.";
-      if (t === 'rate_limit_error') return "Rate limited. Give it a moment and try again.";
-      if (t === 'overloaded_error') return "API is overloaded right now. Try again in a few seconds.";
-      return `Error: ${data.error.message}`;
+    let messages = history.slice(-40).map(m => ({ role: m.role, content: m.content }));
+    let data;
+
+    while (true) {
+      data = await anthropicFetch({
+        model: MODELS[model],
+        max_tokens: model === 'opus' ? 2048 : 1024,
+        system: systemOverride || buildSystemPrompt(),
+        messages,
+        ...(tools ? { tools } : {})
+      });
+
+      if (data.error) {
+        history.pop();
+        const t = data.error.type || '';
+        if (t === 'authentication_error') return "API key rejected. Double-check it in Config.";
+        if (t === 'rate_limit_error') return "Rate limited. Give it a moment and try again.";
+        if (t === 'overloaded_error') return "API is overloaded right now. Try again in a few seconds.";
+        return `Error: ${data.error.message}`;
+      }
+
+      trackTokens(data);
+
+      if (data.stop_reason !== 'tool_use') break;
+
+      // Show searching indicator in place of typing dots
+      const typingEl = document.getElementById('typing');
+      if (typingEl) typingEl.innerHTML = `<div class="bubble" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--accent2);letter-spacing:1px">⌕ SEARCHING...</div>`;
+
+      // Anthropic executes web_search server-side — send back tool_results to continue
+      messages.push({ role: 'assistant', content: data.content });
+      const toolResults = data.content
+        .filter(b => b.type === 'tool_use')
+        .map(tu => ({ type: 'tool_result', tool_use_id: tu.id, content: '' }));
+      messages.push({ role: 'user', content: toolResults });
     }
-    const reply = data.content[0]?.text || "No response received.";
+
+    const reply = data.content?.find(b => b.type === 'text')?.text || 'No response received.';
     trackTokens(data);
-    history.push({ role:'assistant', content: reply, model: model });
+    history.push({ role:'assistant', content: reply, model });
     saveHistory();
     parseChatActions(reply);
-    // Reset badge to current locked model after response
     updateModelBadge(currentModel);
     return reply;
   } catch(e) {
